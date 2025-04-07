@@ -50,6 +50,12 @@ public class AuthenticationService {
             var refreshToken = jwtService.generateRefreshToken(user);
             revokeAllUserTokens(user);
             saveUserToken(user, refreshToken);
+            Cookie accessTokenCookie = new Cookie("access_token", jwtToken);
+            accessTokenCookie.setHttpOnly(true);
+            accessTokenCookie.setSecure(true);
+            accessTokenCookie.setPath("/");
+            accessTokenCookie.setMaxAge(60 * 60 * 24 * 3);
+            response.addCookie(accessTokenCookie);
 
             Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
             refreshTokenCookie.setHttpOnly(true);
@@ -59,7 +65,7 @@ public class AuthenticationService {
             response.addCookie(refreshTokenCookie);
 
             return Authresponse.builder()
-                    .accessToken(jwtToken)
+                    .message("Authentication successful.")
                     .build();
         } catch (DisabledException e) {
             throw new RuntimeException("Votre compte est désactivé. Veuillez l'activer pour vous connecter.", e);
@@ -173,10 +179,18 @@ public class AuthenticationService {
             return null;
         }
 
-        var accessToken = jwtService.generateToken(user);
+        var newAccessToken = jwtService.generateToken(user);
         var newRefreshToken = jwtService.generateRefreshToken(user);
         revokeAllUserTokens(user);
         saveUserToken(user, newRefreshToken);
+
+        Cookie accessTokenCookie = new Cookie("access_token", newAccessToken);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true);
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(60 * 60 * 24 * 3);
+        response.addCookie(accessTokenCookie);
+
         Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
         refreshTokenCookie.setHttpOnly(true);
         refreshTokenCookie.setSecure(true);
@@ -184,7 +198,7 @@ public class AuthenticationService {
         refreshTokenCookie.setMaxAge(60 * 60 * 24 * 7);
         response.addCookie(refreshTokenCookie);
         return Authresponse.builder()
-                .accessToken(accessToken)
+                .message("Token refreshed successfully.")
                 .build();
     }
 
