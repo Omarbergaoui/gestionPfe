@@ -35,7 +35,7 @@ public class SecurityConfiguration {
         http.cors().and()
         .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req ->
-                        req.requestMatchers("/salles/**","/Authentication/**")
+                        req.requestMatchers("/salles/**","/Authentication/Login")
                                 .permitAll()
                                 .requestMatchers("/admin/**","/Salles/**","/Departements/**").hasAnyRole("ADMIN")
                                 .requestMatchers("/enseignant/**").hasAnyRole("ADMIN","ENSEIGNANT")

@@ -4,5 +4,5 @@ public record EnseignantRequestUpdate(
         String firstName,
         String lastName,
         String Matiere
-) {
+){
 }

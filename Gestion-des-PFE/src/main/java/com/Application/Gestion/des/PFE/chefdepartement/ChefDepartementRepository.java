@@ -5,4 +5,5 @@ import java.util.Optional;
 
 public interface ChefDepartementRepository extends MongoRepository<ChefDepartement,String> {
     Optional<ChefDepartement> findByDepartementId(String ChefDepartementId);
+    Optional<ChefDepartement> findByEmail(String Email);
 }

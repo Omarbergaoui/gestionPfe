@@ -1,7 +1,11 @@
 package com.Application.Gestion.des.PFE.Authentication;
 
 
+import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
+import com.Application.Gestion.des.PFE.Dtos.UserDto;
+import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartement;
 import com.Application.Gestion.des.PFE.email.EmailService;
+import com.Application.Gestion.des.PFE.enseignant.Enseignant;
 import com.Application.Gestion.des.PFE.token.Token;
 import com.Application.Gestion.des.PFE.token.TokenRepository;
 import com.Application.Gestion.des.PFE.user.UserEntity;
@@ -15,10 +19,12 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -211,5 +217,33 @@ public class AuthenticationService {
         return "Compte activé avec succès !";
     }
 
+    public Object getUserByAuthentication(UserEntity user) {
+        if (user == null) {
+            throw new RuntimeException("Utilisateur non trouvé");
+        }
+        if (user.getRole().equals("CHEFDEPARTEMENT")) {
+            return (ChefDepartement) user;
+        } else if (user.getRole().equals("ENSEIGNANT")) {
+            Enseignant e = (Enseignant) user;
+            return EnseignantDto.builder()
+                    .id(e.getId())
+                    .firstName(e.getFirstname())
+                    .lastName(e.getLastname())
+                    .role(e.getRole())
+                    .disponibilite(e.getDisponibilite())
+                    .email(user.getEmail())
+                    .departementId(e.getDepartementId())
+                    .matiere(e.getMatiere())
+                    .build();
+        } else {
+            return UserDto.builder()
+                    .id(user.getId())
+                    .firstName(user.getFirstname())
+                    .lastName(user.getLastname())
+                    .role(user.getRole())
+                    .email(user.getEmail())
+                    .build();
+        }
+    }
 }
 

@@ -1,13 +1,19 @@
 package com.Application.Gestion.des.PFE.departement;
+import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartement;
+import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartementNotFoundException;
 import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartementRepository;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
+import com.Application.Gestion.des.PFE.enseignant.EnseignantNotFoundException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantRepository;
+import com.Application.Gestion.des.PFE.enumeration.Role;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -58,12 +64,12 @@ public class DepartementService {
         }
     }
 
-    /*public void deleteDepartement(DepartementRequest departementRequest) {
+    public void deleteDepartement(DepartementRequest departementRequest) {
         try {
             List<Enseignant> enseignantsList = getAllEnseignants(departementRequest);
             enseignantsList.forEach(enseignant -> enseignant.setDepartementId(null));
             enseignantRepository.saveAll(enseignantsList);
-            ChefDepartement currentChef = getChefDepartementById(id);
+            ChefDepartement currentChef = getChefDepartementById(departementRequest.id());
             if (currentChef != null) {
                 Enseignant ens = Enseignant.builder()
                         .id(currentChef.getId())
@@ -77,52 +83,50 @@ public class DepartementService {
                         .departementId(null)
                         .build();
 
-                enseignantRepository.deleteById(currentChef.getId());
-                ensRepository.save(ens);
-                departementRepository.deleteById(id);
+                chefDepartementRepository.deleteById(currentChef.getId());
+                enseignantRepository.save(ens);
+                departementRepository.deleteById(departementRequest.id());
             }
         } catch (EmptyResultDataAccessException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Département non trouvé.");
         }
     }
 
-    /*
+
     public String affecterChefDepartement(String idEnseignant, String idDepartement) {
-        if (!departementRepository.existsById(idDepartement)) {
-            return "Département non trouvé.";
-        }
+        try {
+            var departement = departementRepository.findById(idDepartement)
+                    .orElseThrow(() -> new DepartementNotFoundException(idDepartement));
 
-        var departementOpt = departementRepository.findById(idDepartement);
-        if (!ensRepository.existsById(idEnseignant)) {
-            return "Enseignant non trouvé.";
-        }
+            var enseignant = enseignantRepository.findById(idEnseignant)
+                    .orElseThrow(() -> new EnseignantNotFoundException(idEnseignant));
 
-        var enseignantOpt = ensRepository.findById(idEnseignant);
-        Enseignant enseignant = enseignantOpt.get();
 
-        if (!enseignant.getDepartementId().getId().equals(idDepartement)) {
-            return "L'enseignant n'appartient pas à ce département.";
-        }
+            if (!enseignant.getDepartementId().getId().equals(idDepartement)) {
+                return "L'enseignant n'appartient pas à ce département.";
+            }
 
-        ChefDepartement currentChef = getChefDepartementById(idDepartement);
-        if (currentChef == null) {
+            ChefDepartement currentChef = getChefDepartementById(idDepartement);
 
-            ChefDepartement newChef =ChefDepartement.builder()
-                    .id(enseignant.getId())
-                    .firstname(enseignant.getFirstname())
-                    .lastname(enseignant.getLastname())
-                    .email(enseignant.getEmail())
-                    .departementId(enseignant.getDepartementId())
-                    .password(enseignant.getPassword())
-                    .role(Role.CHEFDEPARTEMENT)
-                    .disponibilite(enseignant.getDisponibilite())
-                    .matiere(enseignant.getMatiere())
-                    .ChefDepartementId(departementOpt.get()).build();
-            ensRepository.deleteById(enseignant.getId());
-            enseignantRepository.save(newChef);
-            return "Chef de département affecté avec succès.";
-        } else {
+            if (currentChef == null) {
+                ChefDepartement newChef = ChefDepartement.builder()
+                        .id(enseignant.getId())
+                        .firstname(enseignant.getFirstname())
+                        .lastname(enseignant.getLastname())
+                        .email(enseignant.getEmail())
+                        .departementId(enseignant.getDepartementId())
+                        .password(enseignant.getPassword())
+                        .role(Role.CHEFDEPARTEMENT)
+                        .disponibilite(enseignant.getDisponibilite())
+                        .matiere(enseignant.getMatiere())
+                        .ChefDepartementId(departement)
+                        .build();
 
+                enseignantRepository.deleteById(enseignant.getId());
+                chefDepartementRepository.save(newChef);
+
+                return "Chef de département affecté avec succès.";
+            }
             Enseignant oldChef = Enseignant.builder()
                     .id(currentChef.getId())
                     .firstname(currentChef.getFirstname())
@@ -134,10 +138,11 @@ public class DepartementService {
                     .disponibilite(currentChef.getDisponibilite())
                     .matiere(currentChef.getMatiere())
                     .build();
-            enseignantRepository.deleteById(oldChef.getId());
-            ensRepository.save(oldChef);
 
-            ChefDepartement newChef =ChefDepartement.builder()
+            chefDepartementRepository.deleteById(oldChef.getId());
+            enseignantRepository.save(oldChef);
+
+            ChefDepartement newChef = ChefDepartement.builder()
                     .id(enseignant.getId())
                     .firstname(enseignant.getFirstname())
                     .lastname(enseignant.getLastname())
@@ -147,28 +152,32 @@ public class DepartementService {
                     .role(Role.CHEFDEPARTEMENT)
                     .disponibilite(enseignant.getDisponibilite())
                     .matiere(enseignant.getMatiere())
-                    .ChefDepartementId(departementOpt.get()).build();
-            ensRepository.deleteById(enseignant.getId());
-            enseignantRepository.save(newChef);
-            return "Le chef de département a été changé avec succés.";
+                    .ChefDepartementId(departement)
+                    .build();
+
+            enseignantRepository.deleteById(enseignant.getId());
+            chefDepartementRepository.save(newChef);
+
+            return "Le chef de département a été changé avec succès.";
+
+        } catch (DepartementNotFoundException | EnseignantNotFoundException e) {
+            return e.getMessage();
+        } catch (Exception e) {
+            return "Erreur lors de l'affectation du chef de département : " + e.getMessage();
         }
     }
 
-*/
+
+
     public List<Enseignant> getAllEnseignants(DepartementRequest departementReq) {
         return enseignantRepository.findByDepartementId(getDepartementById(departementReq));
     }
-/*
 
-    public List<ChefDepartement> getAllChefDepartement(){
-        return enseignantRepository.findAll().stream().filter(en -> en.getRole() == Role.CHEFDEPARTEMENT).collect(Collectors.toList());
-    }
-    */
-
-/*
     public String deleteChefDepartement(String idDepartement) {
-        ChefDepartement currentChef = getChefDepartementById(idDepartement);
-        if (currentChef != null) {
+        try {
+            ChefDepartement currentChef = chefDepartementRepository
+                    .findByDepartementId(idDepartement)
+                    .orElseThrow(() -> new ChefDepartementNotFoundException(idDepartement));
             Enseignant ens = Enseignant.builder()
                     .id(currentChef.getId())
                     .firstname(currentChef.getFirstname())
@@ -178,23 +187,29 @@ public class DepartementService {
                     .role(Role.ENSEIGNANT)
                     .disponibilite(currentChef.getDisponibilite())
                     .matiere(currentChef.getMatiere())
-                    .departementId(null)
+                    .departementId(currentChef.getDepartementId())
                     .build();
-
-            enseignantRepository.deleteById(currentChef.getId());
-            ensRepository.save(ens);
-            return "chef département supprimé avec succée";
+            chefDepartementRepository.deleteById(currentChef.getId());
+            enseignantRepository.save(ens);
+            return "Chef de département supprimé avec succès.";
+        } catch (ChefDepartementNotFoundException e) {
+            return e.getMessage();
+        } catch (Exception e) {
+            return "Erreur lors de la suppression du chef de département : " + e.getMessage();
         }
-        else{
-            return "le chef département n'existe pas";
-        }
-
     }
+
+
+    public ChefDepartement getChefDepartementById(String idDepartement) {
+        return chefDepartementRepository.findByDepartementId(idDepartement)
+                .orElseThrow(() -> new RuntimeException("Aucun chef de département trouvé pour l'ID : " + idDepartement));
+    }
+
 
     public List<Departement> getDepartementssanschef() {
         Set<Departement> departementsAvecChef = new HashSet<>();
 
-        ensRepository.findAll().forEach(ens -> {
+        chefDepartementRepository.findAll().forEach(ens -> {
             if (ens.getDepartementId() != null) {
                 departementsAvecChef.add(ens.getDepartementId());
             }
@@ -204,14 +219,13 @@ public class DepartementService {
                 .collect(Collectors.toList());
     }
 
-
     public List<Departement> getDepartementsavecchef(){
         List<Departement> departements = new ArrayList<>();
-        ensRepository.findAll().forEach(ens -> {
+        chefDepartementRepository.findAll().forEach(ens -> {
             if (ens.getDepartementId() != null) {
                 departements.add(ens.getDepartementId());
             }
         });
         return departements;
-    }*/
+    }
 }

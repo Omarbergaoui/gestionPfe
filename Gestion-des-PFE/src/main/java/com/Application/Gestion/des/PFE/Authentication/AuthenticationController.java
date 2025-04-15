@@ -1,12 +1,16 @@
 package com.Application.Gestion.des.PFE.Authentication;
 
+import com.Application.Gestion.des.PFE.user.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/Authentication")
@@ -31,6 +35,11 @@ public class AuthenticationController {
     @PostMapping("/Change-Password/{code}")
     public ResponseEntity<String> ChangePass(@PathVariable String code,@RequestBody PasswordReset passwordReset){
         return ResponseEntity.ok(service.ChangePassword(code,passwordReset));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getProfile(@AuthenticationPrincipal UserEntity user) {
+        return ResponseEntity.ok(service.getUserByAuthentication(user));
     }
 
     @PostMapping("/refresh-token")
