@@ -64,7 +64,7 @@ public class AuthenticationService {
             accessTokenCookie.setHttpOnly(true);
             accessTokenCookie.setSecure(true);
             accessTokenCookie.setPath("/");
-            accessTokenCookie.setMaxAge(60 * 60 * 24 * 3);
+            accessTokenCookie.setMaxAge(60 * 60 * 24);
             response.addCookie(accessTokenCookie);
 
             Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
@@ -249,10 +249,12 @@ public class AuthenticationService {
         boolean isTokenValid = tokenRepository.findByToken(refreshToken)
                 .map(t -> !t.isExpired() && !t.isRevoked())
                 .orElse(false);
+        System.out.println(isTokenValid);
 
         if (!jwtService.isTokenValid(refreshToken, user) || !isTokenValid) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Invalid or expired refresh token");
+
             return null;
         }
 
@@ -265,10 +267,10 @@ public class AuthenticationService {
         accessTokenCookie.setHttpOnly(true);
         accessTokenCookie.setSecure(true);
         accessTokenCookie.setPath("/");
-        accessTokenCookie.setMaxAge(60 * 60 * 24 * 3);
+        accessTokenCookie.setMaxAge(60 * 60 * 24);
         response.addCookie(accessTokenCookie);
 
-        Cookie refreshTokenCookie = new Cookie("refresh_token", refreshToken);
+        Cookie refreshTokenCookie = new Cookie("refresh_token", newRefreshToken);
         refreshTokenCookie.setHttpOnly(true);
         refreshTokenCookie.setSecure(true);
         refreshTokenCookie.setPath("/");
