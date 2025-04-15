@@ -17,18 +17,25 @@ import java.security.Principal;
 @RequiredArgsConstructor
 public class AuthenticationController {
     private final AuthenticationService service;
+
     @PostMapping("/Login")
-    public ResponseEntity<Authresponse> authenticate(@RequestBody Authrequest request,HttpServletResponse response) {
-        return ResponseEntity.ok(service.authenticate(request,response));
+    public ResponseEntity<Authresponse> authenticate(@RequestBody Authrequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(service.authenticate(request, response));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDto> getCurrentUser(HttpServletRequest request) {
+        UserDto userDto = service.getUserInfoFromRequestToken(request);
+        return ResponseEntity.ok(userDto);
     }
 
     @PostMapping("/SendMail")
-    public ResponseEntity<String> SendMailVerif(@RequestBody EmailVerficationReq req){
+    public ResponseEntity<String> SendMailVerif(@RequestBody EmailVerficationReq req) {
         return ResponseEntity.ok(service.SendMailVerification(req));
     }
 
     @GetMapping("/Verify/{code}")
-    public ResponseEntity<String> Verify(@PathVariable String code){
+    public ResponseEntity<String> Verify(@PathVariable String code) {
         return ResponseEntity.ok(service.VerificationToken(code));
     }
 

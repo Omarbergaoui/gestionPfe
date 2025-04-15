@@ -16,7 +16,7 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            String activationLink = "http://localhost:4200/ForgetPassword/" + activationCode;
+            String activationLink = "http://localhost:3000/ForgetPassword/" + activationCode;
             helper.setTo(to);
             helper.setSubject("Mot de passe oublié");
             helper.setText(

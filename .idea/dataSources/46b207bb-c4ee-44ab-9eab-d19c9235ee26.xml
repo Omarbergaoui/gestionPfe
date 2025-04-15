@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataSource name="PfeManagemnt@localhost">
+  <database-model serializer="dbm" dbms="MONGO" family-id="MONGO" format-version="4.51">
+    <root id="1">
+      <ServerVersion>7.0.5</ServerVersion>
+    </root>
+    <schema id="2" parent="1" name="Rementada"/>
+    <schema id="3" parent="1" name="admin"/>
+    <schema id="4" parent="1" name="config"/>
+    <schema id="5" parent="1" name="e-commerce"/>
+    <schema id="6" parent="1" name="fs-blog"/>
+    <schema id="7" parent="1" name="local"/>
+    <schema id="8" parent="1" name="quizCars"/>
+  </database-model>
+</dataSource>

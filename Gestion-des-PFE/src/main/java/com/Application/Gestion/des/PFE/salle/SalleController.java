@@ -27,8 +27,13 @@ public class SalleController {
     }
 
     @PostMapping("/create")
-    public Salle createSalle(@RequestBody SalleReq req) {
-        return salleService.createSalle(req);
+    public Object createSalle(@RequestBody SalleReq req) {
+        try {
+            return salleService.createSalle(req);
+
+        }catch (Exception e){
+            return e;
+        }
     }
 
     @DeleteMapping("/delete/nom/{nom}")
