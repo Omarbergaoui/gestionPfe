@@ -24,12 +24,6 @@ public class AuthenticationController {
         return ResponseEntity.ok(service.authenticate(request, response));
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<UserDto> getCurrentUser(HttpServletRequest request) {
-        UserDto userDto = service.getUserInfoFromRequestToken(request);
-        return ResponseEntity.ok(userDto);
-    }
-
     @PostMapping("/SendMail")
     public ResponseEntity<String> SendMailVerif(@RequestBody EmailVerficationReq req) {
         return ResponseEntity.ok(service.SendMailVerification(req));
