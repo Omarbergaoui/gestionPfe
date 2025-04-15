@@ -3,6 +3,7 @@ package com.Application.Gestion.des.PFE.Authentication;
 
 import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
+import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartement;
 import com.Application.Gestion.des.PFE.departement.Departement;
 import com.Application.Gestion.des.PFE.email.EmailService;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;

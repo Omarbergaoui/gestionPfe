@@ -1,5 +1,6 @@
 package com.Application.Gestion.des.PFE.Authentication;
 
+import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.user.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
