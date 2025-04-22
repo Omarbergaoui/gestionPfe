@@ -1,4 +1,5 @@
 package com.Application.Gestion.des.PFE.Authentication;
+
 import com.Application.Gestion.des.PFE.Dtos.ChefEnseignantDto;
 import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -155,16 +157,21 @@ public class AuthenticationService {
                 .orElse(false);
 
         if (!jwtService.isTokenValid(refreshToken, user) || !isTokenValid) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired refresh token");
+
             Cookie refreshTokenCookie = new Cookie("refresh_token", null);
             refreshTokenCookie.setHttpOnly(true);
             refreshTokenCookie.setSecure(true);
             refreshTokenCookie.setPath("/");
             refreshTokenCookie.setMaxAge(0);
             response.addCookie(refreshTokenCookie);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired refresh token");
+            return Authresponse.builder()
+                    .message("Invalid or expired refresh token.")
+                    .build();
+
         }
-        if(tokenRepository.findByToken(refreshToken).isPresent()){
-            Token token= tokenRepository.findByToken(refreshToken).get();
+        if (tokenRepository.findByToken(refreshToken).isPresent()) {
+            Token token = tokenRepository.findByToken(refreshToken).get();
             token.setExpiryDate(LocalDateTime.now());
             token.setRevoked(true);
             tokenRepository.save(token);
