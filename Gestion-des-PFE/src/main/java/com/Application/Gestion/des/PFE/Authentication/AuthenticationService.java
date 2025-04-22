@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -140,10 +141,14 @@ public class AuthenticationService {
     }
 
 
-    public Authresponse refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public Authresponse refreshToken(HttpServletRequest request, HttpServletResponse response, UserEntity user) throws IOException {
         final String refreshToken = extractRefreshTokenFromCookies(request);
         if (refreshToken == null || refreshToken.isBlank()) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing Refresh Token");
+            return null;
+        }
+        if(user==null){
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User Not Authorized");
             return null;
         }
         final String userEmail = jwtService.extractUsername(refreshToken);
@@ -151,7 +156,10 @@ public class AuthenticationService {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid refresh token");
             return null;
         }
-        var user = userRepository.findByEmail(userEmail).orElseThrow(() -> new UserNotFoundException("User not found with email: " + userEmail));
+        if (!user.getEmail().equals(userEmail)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User Not Authorized");
+            return null;
+        }
         boolean isTokenValid = tokenRepository.findByToken(refreshToken)
                 .map(t -> !t.isExpired() && !t.isRevoked())
                 .orElse(false);

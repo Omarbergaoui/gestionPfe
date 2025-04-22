@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 
 
@@ -32,8 +33,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("/Change-Password/{code}")
-    public ResponseEntity<String> ChangePass(@PathVariable String code,@RequestBody PasswordReset passwordReset){
-        return ResponseEntity.ok(service.changePassword(code,passwordReset));
+    public ResponseEntity<String> ChangePass(@PathVariable String code, @RequestBody PasswordReset passwordReset) {
+        return ResponseEntity.ok(service.changePassword(code, passwordReset));
     }
 
     @GetMapping("/me")
@@ -42,9 +43,9 @@ public class AuthenticationController {
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<Authresponse> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<Authresponse> refreshToken(HttpServletRequest request, HttpServletResponse response, @AuthenticationPrincipal UserEntity user) {
         try {
-            Authresponse authResponse = service.refreshToken(request, response);
+            Authresponse authResponse = service.refreshToken(request, response,user);
             if (authResponse == null) {
                 return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).build();
             }
