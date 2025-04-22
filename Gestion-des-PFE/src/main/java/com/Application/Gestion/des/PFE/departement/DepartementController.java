@@ -54,7 +54,7 @@ public class DepartementController {
 
     @PutMapping("/Update/Chef")
     public ResponseEntity<Departement> changerChefs(@RequestParam String idDepartement,@RequestParam String idChef){
-        return ResponseEntity.ok(departementService.updateDepartementChefById(new DepartementRequest(idDepartement),new RequestIdChef()));
+        return ResponseEntity.ok(departementService.updateDepartementChefById(new DepartementRequest(idDepartement),new RequestIdChef(idChef)));
     }
 
     @GetMapping("/enseignants")
