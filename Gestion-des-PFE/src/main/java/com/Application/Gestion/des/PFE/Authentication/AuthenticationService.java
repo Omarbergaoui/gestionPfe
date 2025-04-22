@@ -2,7 +2,6 @@ package com.Application.Gestion.des.PFE.Authentication;
 import com.Application.Gestion.des.PFE.Dtos.ChefEnseignantDto;
 import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
-import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartement;
 import com.Application.Gestion.des.PFE.email.EmailService;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
 import com.Application.Gestion.des.PFE.enumeration.Role;
@@ -222,7 +221,7 @@ public class AuthenticationService {
         }
         Role role = user.getRole();
         if ("CHEFDEPARTEMENT".equals(role.name())) {
-            ChefDepartement chef = (ChefDepartement) user;
+            Enseignant chef = (Enseignant) user;
             return ChefEnseignantDto.builder()
                     .id(chef.getId())
                     .firstName(chef.getFirstname())
@@ -231,7 +230,7 @@ public class AuthenticationService {
                     .email(chef.getEmail())
                     .matiere(chef.getMatiere())
                     .departementId(chef.getDepartementId())
-                    .chefDepartementId(chef.getChefDepartementId())
+                    .chefDepartementId(chef.getDepartementId())
                     .disponibilite(chef.getDisponibilite())
                     .build();
         } else if ("ENSEIGNANT".equals(role.name())) {
