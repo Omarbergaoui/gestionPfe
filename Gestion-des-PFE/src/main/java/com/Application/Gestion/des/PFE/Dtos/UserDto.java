@@ -21,8 +21,4 @@ public class UserDto {
     private String lastName;
     private String email;
     private Role role;
-    private List<Token> tokens = new ArrayList<>();
-    private boolean enabled;
-    private boolean accountLocked;
-
 }

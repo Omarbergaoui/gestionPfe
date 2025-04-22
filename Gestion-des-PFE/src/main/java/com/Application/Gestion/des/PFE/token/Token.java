@@ -17,12 +17,16 @@ import java.time.LocalDateTime;
 @Document(collection = "Token")
 public class Token {
     @Id
-    private String Id;
+    private String id;
     private String token;
-    public boolean revoked;
-    public boolean expired;
+    private boolean revoked;
     @DBRef
-    public UserEntity user;
+    private UserEntity user;
     @CreatedDate
     private LocalDateTime createdDate;
+    private LocalDateTime expiryDate;
+
+    public boolean isExpired() {
+        return expiryDate.isBefore(LocalDateTime.now());
+    }
 }

@@ -1,17 +1,14 @@
 package com.Application.Gestion.des.PFE.Authentication;
 
-import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.user.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
-import java.security.Principal;
+
 
 @RestController
 @RequestMapping("/Authentication")
@@ -26,17 +23,17 @@ public class AuthenticationController {
 
     @PostMapping("/SendMail")
     public ResponseEntity<String> SendMailVerif(@RequestBody EmailVerficationReq req) {
-        return ResponseEntity.ok(service.SendMailVerification(req));
+        return ResponseEntity.ok(service.sendMailVerification(req));
     }
 
     @GetMapping("/Verify/{code}")
     public ResponseEntity<String> Verify(@PathVariable String code) {
-        return ResponseEntity.ok(service.VerificationToken(code));
+        return ResponseEntity.ok(service.verifyToken(code));
     }
 
     @PostMapping("/Change-Password/{code}")
     public ResponseEntity<String> ChangePass(@PathVariable String code,@RequestBody PasswordReset passwordReset){
-        return ResponseEntity.ok(service.ChangePassword(code,passwordReset));
+        return ResponseEntity.ok(service.changePassword(code,passwordReset));
     }
 
     @GetMapping("/me")

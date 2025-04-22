@@ -32,6 +32,7 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -59,12 +60,6 @@ public class JwtService {
             UserDetails userDetails,
             long expiration
     ) {
-        String roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)  // Convert the authorities to a list of role strings
-                .collect(Collectors.joining(","));
-
-        // Add roles to extraClaims
-        extraClaims.put("roles", roles);
         return Jwts
                 .builder()
                 .setClaims(extraClaims)

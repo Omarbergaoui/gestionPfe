@@ -33,12 +33,9 @@ public abstract class UserEntity implements UserDetails {
     private String code;
     private LocalDateTime codeexpiryDate;
     private String activationcode;
-
-    @JsonIgnore
-    @DBRef
-    private List<Token> tokens = new ArrayList<>();
     private boolean enable;
     private boolean accountLocked;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role.name()));

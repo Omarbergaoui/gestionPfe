@@ -1,7 +1,7 @@
 package com.Application.Gestion.des.PFE.departement;
 
 public record DepartmentUpdateRequest(
-        DepartementReq departementReq,
+        DepartementName departementName,
         DepartementRequest departementRequest
 ) {
 }

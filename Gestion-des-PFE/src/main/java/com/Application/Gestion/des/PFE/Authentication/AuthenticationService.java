@@ -1,10 +1,8 @@
 package com.Application.Gestion.des.PFE.Authentication;
-
-
+import com.Application.Gestion.des.PFE.Dtos.ChefEnseignantDto;
 import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
 import com.Application.Gestion.des.PFE.chefdepartement.ChefDepartement;
-import com.Application.Gestion.des.PFE.departement.Departement;
 import com.Application.Gestion.des.PFE.email.EmailService;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
 import com.Application.Gestion.des.PFE.enumeration.Role;
@@ -13,25 +11,15 @@ import com.Application.Gestion.des.PFE.token.TokenRepository;
 import com.Application.Gestion.des.PFE.user.UserEntity;
 import com.Application.Gestion.des.PFE.security.JwtService;
 import com.Application.Gestion.des.PFE.user.UserRepository;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.io.IOException;
-import java.security.SignatureException;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -44,12 +32,8 @@ public class AuthenticationService {
     private final TokenRepository tokenRepository;
     private final EmailService emailService;
 
-
     public Authresponse authenticate(Authrequest request, HttpServletResponse response) {
-        var user = userRepository.findByEmail(request.email());
-        if (user == null) {
-            throw new UserNotFoundException("Utilisateur non trouvé avec l'email: " + request.email());
-        }
+        var user = userRepository.findByEmail(request.email()).orElseThrow(() -> new UserNotFoundException("User not found with email: " + request.email()));
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -59,8 +43,8 @@ public class AuthenticationService {
             );
             var jwtToken = jwtService.generateToken(user);
             var refreshToken = jwtService.generateRefreshToken(user);
-            revokeAllUserTokens(user);
             saveUserToken(user, refreshToken);
+
             Cookie accessTokenCookie = new Cookie("access_token", jwtToken);
             accessTokenCookie.setHttpOnly(true);
             accessTokenCookie.setSecure(true);
@@ -76,14 +60,17 @@ public class AuthenticationService {
             response.addCookie(refreshTokenCookie);
 
             return Authresponse.builder()
-                    .message("Authentication successful.")
+                    .message("You have successfully logged in. Welcome back!")
                     .build();
+
         } catch (DisabledException e) {
-            throw new RuntimeException("Votre compte est désactivé. Veuillez l'activer pour vous connecter.", e);
+            throw new RuntimeException("Your account is disabled. Please activate it to log in.", e);
+        } catch (LockedException e) {
+            throw new RuntimeException("Your account is locked. Please contact the administrator.", e);
         } catch (BadCredentialsException e) {
-            throw new RuntimeException("Erreur d'authentification : Mauvais identifiants.", e);
+            throw new RuntimeException("Authentication failed: Invalid credentials.", e);
         } catch (Exception e) {
-            throw new RuntimeException("Erreur d'authentification : " + e.getMessage(), e);
+            throw new RuntimeException("Authentication error: " + e.getMessage(), e);
         }
     }
 
@@ -91,109 +78,100 @@ public class AuthenticationService {
         var token = Token.builder()
                 .user(user)
                 .token(jwtToken)
-                .expired(false)
+                .expiryDate(LocalDateTime.now().plusDays(30))
                 .revoked(false)
                 .build();
-        var savedToken = tokenRepository.save(token);
-        user.getTokens().add(savedToken);
-        userRepository.save(user);
-    }
-
-    private void revokeAllUserTokens(UserEntity user) {
-        List<Token> validUserTokens = tokenRepository.findByUser(user);
-        if (validUserTokens.isEmpty())
-            return;
-        validUserTokens.forEach(token -> {
-            token.setExpired(true);
-            token.setRevoked(true);
-        });
-        tokenRepository.saveAll(validUserTokens);
+        tokenRepository.save(token);
     }
 
     private String generateRandomCode() {
         return UUID.randomUUID().toString().replace("-", "");
     }
 
-    public String SendMailVerification(EmailVerficationReq req) {
-        var user = userRepository.findByEmail(req.email());
-        if (user == null) {
-            throw new UserNotFoundException("Utilisateur non trouvé avec l'email: " + req.email());
+    public String sendMailVerification(EmailVerficationReq req) {
+        var user = userRepository.findByEmail(req.email())
+                .orElseThrow(() -> new UserNotFoundException("No user found with email: " + req.email()));
+
+        if (user.getCode() != null && user.getCodeexpiryDate().isAfter(LocalDateTime.now())) {
+            throw new VerificationCodeAlreadySentException("A verification code has already been sent. Please check your email.");
         }
-        if (user.getCode() != null && user.getCodeexpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Code déja envoyé,please check your box");
-        }
-        String Code = generateRandomCode();
-        user.setCode(Code);
+        String code = generateRandomCode();
+        user.setCode(code);
         user.setCodeexpiryDate(LocalDateTime.now().plusHours(3));
         userRepository.save(user);
-        emailService.sendEmail(req.email(), Code);
-        return "Lien Envoyée Avec Succées,check your box";
+        emailService.sendEmail(req.email(), code);
+        return "Verification link sent successfully. Please check your email.";
     }
 
-    public String VerificationToken(String code) {
+
+    public String verifyToken(String code) {
         var user = userRepository.findByCode(code);
         if (user == null) {
-            throw new UserNotFoundException("Utilisateur non trouvé");
+            throw new UserNotFoundException("User not found for the provided verification code.");
         }
+
         if (user.getCodeexpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Lien expiré");
+            throw new VerificationLinkExpiredException("The verification link has expired.");
         }
-        return user.getFirstname() + user.getLastname();
+
+        return user.getFirstname() + " " + user.getLastname();
     }
 
-    public String ChangePassword(String code, PasswordReset passwordreq) {
+
+    public String changePassword(String code, PasswordReset passwordReq) {
         var user = userRepository.findByCode(code);
         if (user == null) {
-            throw new UserNotFoundException("Utilisateur non trouvé");
+            throw new UserNotFoundException("No user found for the provided verification code.");
         }
+
         if (user.getCodeexpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Lien expiré");
+            throw new VerificationLinkExpiredException("The password reset link has expired.");
         }
-        if (passwordreq.NewPassword().equals(passwordreq.ConfirmPassword())) {
-            user.setPassword(passwordEncoder.encode(passwordreq.NewPassword()));
-            return "mot de passe changé avec succées";
-        } else {
-            throw new RuntimeException("les deux mots de passe ne se correspondent pas");
+
+        if (!passwordReq.NewPassword().equals(passwordReq.ConfirmPassword())) {
+            throw new PasswordMismatchException("The new password and confirmation do not match.");
         }
+        user.setPassword(passwordEncoder.encode(passwordReq.NewPassword()));
+        user.setCode(null);
+        user.setCodeexpiryDate(null);
+        userRepository.save(user);
+        return "Password changed successfully.";
     }
+
 
     public Authresponse refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
         final String refreshToken = extractRefreshTokenFromCookies(request);
-        if (refreshToken == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            try {
-                response.getWriter().write("Missing Refresh Token");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        if (refreshToken == null || refreshToken.isBlank()) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing Refresh Token");
             return null;
         }
         final String userEmail = jwtService.extractUsername(refreshToken);
-
         if (userEmail == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid refresh token");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid refresh token");
             return null;
         }
-        var user = userRepository.findByEmail(userEmail);
-        if (user == null) {
-            throw new UserNotFoundException("Utilisateur non trouvé avec l'email: " + userEmail);
-        }
+        var user = userRepository.findByEmail(userEmail).orElseThrow(() -> new UserNotFoundException("User not found with email: " + userEmail));
         boolean isTokenValid = tokenRepository.findByToken(refreshToken)
                 .map(t -> !t.isExpired() && !t.isRevoked())
                 .orElse(false);
-        System.out.println(isTokenValid);
 
         if (!jwtService.isTokenValid(refreshToken, user) || !isTokenValid) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid or expired refresh token");
-
-            return null;
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired refresh token");
+            Cookie refreshTokenCookie = new Cookie("refresh_token", null);
+            refreshTokenCookie.setHttpOnly(true);
+            refreshTokenCookie.setSecure(true);
+            refreshTokenCookie.setPath("/");
+            refreshTokenCookie.setMaxAge(0);
+            response.addCookie(refreshTokenCookie);
         }
-
+        if(tokenRepository.findByToken(refreshToken).isPresent()){
+            Token token= tokenRepository.findByToken(refreshToken).get();
+            token.setExpiryDate(LocalDateTime.now());
+            token.setRevoked(true);
+            tokenRepository.save(token);
+        }
         var newAccessToken = jwtService.generateToken(user);
         var newRefreshToken = jwtService.generateRefreshToken(user);
-        revokeAllUserTokens(user);
         saveUserToken(user, newRefreshToken);
 
         Cookie accessTokenCookie = new Cookie("access_token", newAccessToken);
@@ -226,46 +204,47 @@ public class AuthenticationService {
         return null;
     }
 
-    public String extractAccessTokenFromCookies(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("access_token".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
-    }
-
     public String activateAccount(String code) {
         UserEntity user = userRepository.findByActivationcode(code);
         if (user == null) {
-            throw new RuntimeException("Utilisateur non trouvé ou code invalide.");
+            throw new ActivationCodeInvalidException("User not found or activation code is invalid.");
         }
         user.setEnable(true);
         user.setActivationcode(null);
         userRepository.save(user);
-        return "Compte activé avec succès !";
+        return "Account activated successfully!";
     }
+
 
     public Object getUserByAuthentication(UserEntity user) {
         if (user == null) {
-            throw new RuntimeException("Utilisateur non trouvé");
+            throw new UserNotFoundException("User not found");
         }
-        if (user.getRole().equals("CHEFDEPARTEMENT")) {
-            return (ChefDepartement) user;
-        } else if (user.getRole().equals("ENSEIGNANT")) {
-            Enseignant e = (Enseignant) user;
+        Role role = user.getRole();
+        if ("CHEFDEPARTEMENT".equals(role.name())) {
+            ChefDepartement chef = (ChefDepartement) user;
+            return ChefEnseignantDto.builder()
+                    .id(chef.getId())
+                    .firstName(chef.getFirstname())
+                    .lastName(chef.getLastname())
+                    .role(chef.getRole())
+                    .email(chef.getEmail())
+                    .matiere(chef.getMatiere())
+                    .departementId(chef.getDepartementId())
+                    .chefDepartementId(chef.getChefDepartementId())
+                    .disponibilite(chef.getDisponibilite())
+                    .build();
+        } else if ("ENSEIGNANT".equals(role.name())) {
+            Enseignant enseignant = (Enseignant) user;
             return EnseignantDto.builder()
-                    .id(e.getId())
-                    .firstName(e.getFirstname())
-                    .lastName(e.getLastname())
-                    .role(e.getRole())
-                    .disponibilite(e.getDisponibilite())
-                    .email(user.getEmail())
-                    .departementId(e.getDepartementId())
-                    .matiere(e.getMatiere())
+                    .id(enseignant.getId())
+                    .firstName(enseignant.getFirstname())
+                    .lastName(enseignant.getLastname())
+                    .role(enseignant.getRole())
+                    .email(enseignant.getEmail())
+                    .matiere(enseignant.getMatiere())
+                    .departementId(enseignant.getDepartementId())
+                    .disponibilite(enseignant.getDisponibilite())
                     .build();
         } else {
             return UserDto.builder()
@@ -277,5 +256,6 @@ public class AuthenticationService {
                     .build();
         }
     }
+
 }
 

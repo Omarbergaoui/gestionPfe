@@ -1,14 +1,14 @@
 package com.Application.Gestion.des.PFE.salle;
+import com.Application.Gestion.des.PFE.disponibilte.AvailableDateException;
+import com.Application.Gestion.des.PFE.disponibilte.DisponibilityNotFoundException;
+import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,39 +21,44 @@ public class SalleService {
 
     public Salle createSalle(SalleReq req) {
         if (!isValidSalleName(req.Name())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nom de la salle doit commencer par une lettre majuscule suivie de deux chiffres ou commencer par 'Amphi' suivi de n'importe quel mot.");
+            throw new SalleException("The room name must start with a capital letter followed by two digits, or start with 'Amphi' followed by any word.");
         }
         if (salleRepository.findByNom(req.Name()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La Salle Existe Déjà.");
+            throw new SalleNotFoundException("The room already exists.");
         }
-        return salleRepository.save(Salle.builder().nom(req.Name()).disponibilite(new ArrayList<>()).build());
+        return salleRepository.save(Salle.builder()
+                .nom(req.Name())
+                .disponibilite(new ArrayList<>())
+                .build());
     }
+
 
     public String deleteSalleByNom(String nom) {
         Salle salle = salleRepository.findByNom(nom)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle non trouvée"));
+                .orElseThrow(() -> new SalleNotFoundException("Room not found"));
         salleRepository.delete(salle);
-        return "Salle Supprimée Avec Succées";
+        return "Room successfully deleted.";
     }
+
 
     public String deleteSalleById(SalleRequest request) {
         Salle salle = salleRepository.findById(request.id())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle non trouvée"));
+                .orElseThrow(() -> new SalleNotFoundException("Room not found"));
         salleRepository.delete(salle);
-        return "Salle Supprimée Avec Succées";
+        return "Room successfully deleted.";
     }
 
 
     public Salle getSalleById(SalleRequest request) {
         return salleRepository.findById(request.id())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle non trouvée"));
+                .orElseThrow(() -> new SalleNotFoundException("Room not found with id: " + request.id()));
     }
-
 
     public Salle getSalleByNom(SalleReq req) {
         return salleRepository.findByNom(req.Name())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle non trouvée"));
+                .orElseThrow(() -> new SalleNotFoundException("Room not found with name: " + req.Name()));
     }
+
 
     public List<Salle> getAllSalle(){
         return salleRepository.findAll();
@@ -76,21 +81,32 @@ public class SalleService {
 
     public Salle addDisponibility(SalleRequest req, LocalDateTime dateTime) {
         if (!isValidDateTime(dateTime)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date invalide ou dans le passé.");
+            throw new InvalidDateException("Date is invalid or in the past.");
         }
+
         Salle salle = getSalleById(req);
+        if (salle.getDisponibilite().contains(dateTime)) {
+            throw new AvailableDateException("This date is already available.");
+        }
+
         salle.getDisponibilite().add(dateTime);
         return salleRepository.save(salle);
     }
 
     public Salle removeDisponibility(SalleRequest req, LocalDateTime dateTimeToRemove) {
         if (!isValidDateTime(dateTimeToRemove)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Date invalide ou dans le passé.");
+            throw new InvalidDateException("Date is invalid or in the past.");
         }
+
         Salle salle = getSalleById(req);
-        salle.getDisponibilite().removeIf(date -> date.equals(dateTimeToRemove));
+        if (!salle.getDisponibilite().contains(dateTimeToRemove)) {
+            throw new DisponibilityNotFoundException("This date is not available for removal.");
+        }
+
+        salle.getDisponibilite().remove(dateTimeToRemove);
         return salleRepository.save(salle);
     }
+
 
     private boolean isValidDateTime(LocalDateTime dateTime) {
         LocalDateTime now = LocalDateTime.now();
@@ -100,14 +116,10 @@ public class SalleService {
     }
 
     public List<Salle> getSallesDisponibles(LocalDateTime date) {
-        return salleRepository.findAll().stream()
-                .filter(salle -> !salle.getDisponibilite().contains(date))
-                .collect(Collectors.toList());
+        return salleRepository.findByDisponibiliteNotContaining(date);
     }
 
     public List<Salle> getSallesIndisponibles(LocalDateTime date) {
-        return salleRepository.findAll().stream()
-                .filter(salle -> salle.getDisponibilite().contains(date))
-                .collect(Collectors.toList());
+        return salleRepository.findByDisponibiliteContaining(date);
     }
 }

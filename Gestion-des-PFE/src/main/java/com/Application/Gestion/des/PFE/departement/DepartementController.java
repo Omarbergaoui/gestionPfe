@@ -1,5 +1,6 @@
 package com.Application.Gestion.des.PFE.departement;
 
+import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +22,8 @@ public class DepartementController {
     }
 
     @GetMapping("/id")
-    public ResponseEntity<Departement> getDepartementById(@RequestBody DepartementRequest departementRequest) {
-        return ResponseEntity.ok(departementService.getDepartementById(departementRequest));
+    public ResponseEntity<Departement> getDepartementById(@RequestParam String id) {
+        return ResponseEntity.ok(departementService.getDepartementById(new DepartementRequest(id)));
     }
 
     @GetMapping
@@ -36,43 +37,33 @@ public class DepartementController {
     }
 
     @PutMapping("/id")
-    public ResponseEntity<Departement> updateDepartement(@RequestBody DepartmentUpdateRequest departmentUpdateRequest) {
-        return ResponseEntity.ok(departementService.updateDepartementById(departmentUpdateRequest.departementRequest(),departmentUpdateRequest.departementReq()));
+    public ResponseEntity<Departement> updateDepartement(@RequestBody DepartementName departementName,@RequestParam String id) {
+        return ResponseEntity.ok(departementService.updateDepartementById(new DepartementRequest(id),departementName));
     }
 
-    /*@DeleteMapping("/id")
-    public ResponseEntity<String> deleteDepartement(@RequestBody DepartementRequest departementReq) {
-        departementService.deleteDepartement(departementReq.id());
-        return ResponseEntity.ok("Département supprimé avec succès.");
+    // 9bal matfasakh l departement lazem l enseignants ili fi westou yemchiw l departement ekher
+    @DeleteMapping("/id")
+    public ResponseEntity<String> deleteDepartement(@RequestParam String idDeparttodelete,@RequestParam String idDeparttoreassign) {
+        return ResponseEntity.ok(departementService.deleteDepartement(new DepartementRequest(idDeparttodelete),new DepartementRequest(idDeparttoreassign)));
     }
 
     @GetMapping("/chefs")
-    public ResponseEntity<List<ChefDepartement>> getAllChefDepartements() {
-        return ResponseEntity.ok(departementService.getAllChefDepartement());
+    public ResponseEntity<List<EnseignantDto>> getAllChefDepartements() {
+        return ResponseEntity.ok(departementService.getAllChefs());
     }
 
-    @DeleteMapping("/chef/{id}")
-    public ResponseEntity<String> deleteChefDepartement(@PathVariable String id) {
-        return ResponseEntity.ok(departementService.deleteChefDepartement(id));
+    @PutMapping("/Update/Chef")
+    public ResponseEntity<Departement> changerChefs(@RequestParam String idDepartement,@RequestParam String idChef){
+        return ResponseEntity.ok(departementService.updateDepartementChefById(new DepartementRequest(idDepartement),new RequestIdChef()));
     }
 
-    @PostMapping("/affecter-chef/{idEnseignant}/{idDepartement}")
-    public ResponseEntity<String> affecterChefDepartement(@PathVariable String idEnseignant, @PathVariable String idDepartement) {
-        return ResponseEntity.ok(departementService.affecterChefDepartement(idEnseignant, idDepartement));
+    @GetMapping("/enseignants")
+    public ResponseEntity<List<EnseignantDto>> getEnseignants(@RequestParam String id){
+        return ResponseEntity.ok(departementService.getAllEnseignants(new DepartementRequest(id)));
     }
 
-    @PostMapping("/affecter-enseignant/{idEnseignant}/{idDepartement}")
-    public ResponseEntity<String> affecterEnseigantDepartement(@PathVariable String idEnseignant, @PathVariable String idDepartement) {
-        return ResponseEntity.ok(departementService.affecterEnsignantDepartement(idEnseignant, idDepartement));
+    @GetMapping("/ChefDepartement")
+    public ResponseEntity<EnseignantDto> getChefDepartement(@RequestParam String id){
+        return ResponseEntity.ok(departementService.getChefDepartementById(new DepartementRequest(id)));
     }
-
-    @GetMapping("/sans-chef")
-    public ResponseEntity<List<Departement>> getDepartementsSansChef() {
-        return ResponseEntity.ok(departementService.getDepartementssanschef());
-    }
-
-    @GetMapping("/avec-chef")
-    public ResponseEntity<List<Departement>> getDepartementsAvecChef() {
-        return ResponseEntity.ok(departementService.getDepartementsavecchef());
-    }*/
 }

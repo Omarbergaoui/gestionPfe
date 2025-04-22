@@ -18,5 +18,4 @@ public class EnseignantDto extends UserDto {
     private List<LocalDateTime> disponibilite = new ArrayList<>();
     private String matiere;
     private Departement departementId;
-
 }

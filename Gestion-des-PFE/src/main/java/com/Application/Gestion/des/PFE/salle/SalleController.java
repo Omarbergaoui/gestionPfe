@@ -2,6 +2,7 @@ package com.Application.Gestion.des.PFE.salle;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,6 +18,7 @@ public class SalleController {
 
     private final SalleService salleService;
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
+
     private LocalDateTime parseAndValidateDate(String dateTimeStr) {
         try {
             LocalDateTime dateTime = LocalDateTime.parse(dateTimeStr, formatter);
@@ -27,72 +29,79 @@ public class SalleController {
     }
 
     @PostMapping("/create")
-    public Object createSalle(@RequestBody SalleReq req) {
-        try {
-            return salleService.createSalle(req);
-
-        }catch (Exception e){
-            return e;
-        }
+    public ResponseEntity<Salle> createSalle(@RequestBody SalleReq req) {
+        return ResponseEntity.ok(salleService.createSalle(req));
     }
 
-    @DeleteMapping("/delete/nom/{nom}")
-    public String deleteSalleByNom(@RequestBody SalleReq req) {
-        return salleService.deleteSalleByNom(req.Name());
+    @DeleteMapping("/delete/nom")
+    public ResponseEntity<String> deleteSalleByNom(@RequestBody SalleReq salleReq) {
+        String response = salleService.deleteSalleByNom(salleReq.Name());
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/delete/id")
-    public String deleteSalleById(@RequestBody SalleRequest request) {
-        return salleService.deleteSalleById(request);
+    public ResponseEntity<String> deleteSalleById(@RequestParam String id) {
+        String response = salleService.deleteSalleById(new SalleRequest(id));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/id")
-    public Salle getSalleById(@RequestBody SalleRequest request) {
-        return salleService.getSalleById(new SalleRequest(request.id()));
+    public ResponseEntity<Salle> getSalleById(@RequestParam String id) {
+        Salle salle = salleService.getSalleById(new SalleRequest(id));
+        return ResponseEntity.ok(salle);
     }
 
     @GetMapping("/nom")
-    public Salle getSalleByNom(@RequestBody SalleReq req) {
-        return salleService.getSalleByNom(req);
+    public ResponseEntity<Salle> getSalleByNom(@RequestBody SalleReq req) {
+        Salle salle = salleService.getSalleByNom(req);
+        return ResponseEntity.ok(salle);
     }
 
     @GetMapping("/all")
-    public List<Salle> getAllSalle() {
-        return salleService.getAllSalle();
+    public ResponseEntity<List<Salle>> getAllSalle() {
+        List<Salle> salles = salleService.getAllSalle();
+        return ResponseEntity.ok(salles);
     }
 
     @PutMapping("/update/id")
-    public Salle updateSalleById(@RequestBody SalleUpdateById salleUpdateById) {
-        return salleService.updateSalleById(salleUpdateById.request(),salleUpdateById.req());
+    public ResponseEntity<Salle> updateSalleById(@RequestParam String id,@RequestBody SalleReq salleReq) {
+        Salle updatedSalle = salleService.updateSalleById(new SalleRequest(id), salleReq);
+        return ResponseEntity.ok(updatedSalle);
     }
 
     @PutMapping("/update/nom")
-    public Salle updateSalleByNom(@RequestBody SalleUpdateByName req) {
-        return salleService.updateSalleByNom(req.req(),req.request());
+    public ResponseEntity<Salle> updateSalleByNom(@RequestBody SalleUpdateByName req) {
+        Salle updatedSalle = salleService.updateSalleByNom(req.req(), req.request());
+        return ResponseEntity.ok(updatedSalle);
     }
 
-    @PostMapping("/{id}/disponibility/add")
-    public Salle addDisponibility(@PathVariable String id, @RequestBody DisponibilityReq req) {
+    @PostMapping("/disponibility/add")
+    public ResponseEntity<Salle> addDisponibility(@RequestParam String id, @RequestBody DisponibilityReq req) {
         LocalDateTime dateTime = parseAndValidateDate(req.dateTime());
-        return salleService.addDisponibility(new SalleRequest(id), dateTime);
+        Salle updatedSalle = salleService.addDisponibility(new SalleRequest(id), dateTime);
+        return ResponseEntity.ok(updatedSalle);
     }
 
-    @PostMapping("/{id}/disponibility/remove")
-    public Salle removeDisponibility(@PathVariable String id, @RequestBody DisponibilityReq req) {
+    @PostMapping("/disponibility/remove")
+    public ResponseEntity<Salle> removeDisponibility(@RequestParam String id, @RequestBody DisponibilityReq req) {
         LocalDateTime dateTime = parseAndValidateDate(req.dateTime());
-        return salleService.removeDisponibility(new SalleRequest(id), dateTime);
+        Salle updatedSalle = salleService.removeDisponibility(new SalleRequest(id), dateTime);
+        return ResponseEntity.ok(updatedSalle);
     }
 
     @GetMapping("/disponibles")
-    public List<Salle> getSallesDisponibles(@RequestParam String dateTime) {
-        LocalDateTime date = parseAndValidateDate(dateTime);
-        return salleService.getSallesDisponibles(date);
+    public ResponseEntity<List<Salle>> getSallesDisponibles(@RequestBody DisponibilityReq disponibilityReq) {
+        LocalDateTime date = parseAndValidateDate(disponibilityReq.dateTime());
+        List<Salle> sallesDisponibles = salleService.getSallesDisponibles(date);
+        return ResponseEntity.ok(sallesDisponibles);
     }
 
     @GetMapping("/indisponibles")
-    public List<Salle> getSallesIndisponibles(@RequestParam String dateTime) {
-        LocalDateTime date = parseAndValidateDate(dateTime);
-        return salleService.getSallesIndisponibles(date);
+    public ResponseEntity<List<Salle>> getSallesIndisponibles(@RequestBody DisponibilityReq disponibilityReq) {
+        LocalDateTime date = parseAndValidateDate(disponibilityReq.dateTime());
+        List<Salle> sallesIndisponibles = salleService.getSallesIndisponibles(date);
+        return ResponseEntity.ok(sallesIndisponibles);
     }
+
 
 }

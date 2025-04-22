@@ -1,5 +1,6 @@
 package com.Application.Gestion.des.PFE.security;
 
+import com.Application.Gestion.des.PFE.Authentication.UserNotFoundException;
 import com.Application.Gestion.des.PFE.token.Token;
 import com.Application.Gestion.des.PFE.token.TokenRepository;
 import com.Application.Gestion.des.PFE.user.UserRepository;
@@ -17,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -47,61 +49,39 @@ public class LogoutService implements LogoutHandler {
             HttpServletResponse response,
             Authentication authentication
     ) {
-        log.debug("Logout process started.");
-
         final String refreshToken = extractCookieValue(request, "refresh_token");
-
         if (refreshToken == null) {
-            log.warn("Logout attempt without refresh token cookie.");
             clearAuthCookies(response);
             SecurityContextHolder.clearContext();
             return;
         }
 
-        String userEmail = null;
+        String userEmail;
         try {
             userEmail = jwtService.extractUsername(refreshToken);
         } catch (ExpiredJwtException e) {
-            log.warn("Logout attempt with expired refresh token.");
+            throw new ExpiredTokenException("Refresh token has expired");
         } catch (SignatureException | MalformedJwtException e) {
-            log.warn("Logout attempt with invalid refresh token: {}", e.getMessage());
+            throw new InvalidTokenException("Invalid refresh token");
         } catch (Exception e) {
-            log.error("Error extracting username from refresh token during logout", e);
+            throw new RuntimeException("Unexpected error during token parsing", e);
         }
 
-        if (userEmail != null) {
-            UserEntity user = userRepository.findByEmail(userEmail);
-            if (user != null) {
-                log.info("Invalidating tokens for user: {}", userEmail);
-
-                revokeAllUserTokens(user);
-            } else {
-                log.warn("User not found for email {} extracted from refresh token during logout.", userEmail);
-            }
+        UserEntity user = userRepository.findByEmail(userEmail).orElseThrow(() -> new UserNotFoundException("User not found with email: " + userEmail));
+        if (user != null) {
+            tokenRepository.findByToken(refreshToken).ifPresent(token -> {
+                if (!token.isRevoked() && !token.isExpired()) {
+                    token.setRevoked(true);
+                    token.setExpiryDate(LocalDateTime.now());
+                    tokenRepository.save(token);
+                }
+            });
         }
 
-        log.debug("Clearing authentication cookies.");
         clearAuthCookies(response);
-
-        log.debug("Clearing SecurityContextHolder.");
         SecurityContextHolder.clearContext();
-
-        log.info("Logout process completed for request associated with email: {} (if extracted)", userEmail);
     }
 
-    private void revokeAllUserTokens(UserEntity user) {
-        List<Token> validUserTokens = tokenRepository.findByUserAndExpiredFalseAndRevokedFalse(user.getId());
-        if (validUserTokens.isEmpty()){
-            log.debug("No valid tokens found to revoke for user: {}", user.getEmail());
-            return;
-        }
-        log.debug("Revoking {} valid token(s) for user: {}", validUserTokens.size(), user.getEmail());
-        validUserTokens.forEach(token -> {
-            token.setExpired(true);
-            token.setRevoked(true);
-        });
-        tokenRepository.saveAll(validUserTokens);
-    }
 
     private void clearAuthCookies(HttpServletResponse response) {
 
