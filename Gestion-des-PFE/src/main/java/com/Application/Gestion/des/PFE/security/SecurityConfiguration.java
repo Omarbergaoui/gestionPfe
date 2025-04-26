@@ -35,7 +35,7 @@ public class SecurityConfiguration {
         http.cors().and()
         .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req ->
-                        req.requestMatchers("/PFE/upload","/Authentication/Login","/Authentication/refresh-token","/Authentication/SendMail","/Authentication/Verify/**","/Authentication/Change-Password/**","/Authentication/activate")
+                        req.requestMatchers("/Authentication/Login","/Authentication/SendMail","/Authentication/Verify/**","/Authentication/Change-Password/**","/Authentication/activate")
                                 .permitAll()
                                 .requestMatchers("/Admin/**","/Salles/**","/Departements/**","/Enseignants/create","/Enseignants/all","/Enseignants/delete/by-id","/Enseignants/delete/by-email","/Enseignants/assign-department","/Enseignants/disponibles","/Enseignants/indisponibles").hasAnyRole("ADMIN")
                                 .requestMatchers("/Enseignants/update","/Enseignants/disponibilite/add","/Enseignants/disponibilite/delete").hasAnyRole("CHEFDEPARTEMENT","ENSEIGNANT")
