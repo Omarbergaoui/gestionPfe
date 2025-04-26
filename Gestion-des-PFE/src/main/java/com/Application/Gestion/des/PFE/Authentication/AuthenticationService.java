@@ -147,7 +147,7 @@ public class AuthenticationService {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing Refresh Token");
             return null;
         }
-        if(user==null){
+        if (user == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User Not Authorized");
             return null;
         }
@@ -233,41 +233,13 @@ public class AuthenticationService {
         if (user == null) {
             throw new UserNotFoundException("User not found");
         }
-        Role role = user.getRole();
-        if ("CHEFDEPARTEMENT".equals(role.name())) {
-            Enseignant chef = (Enseignant) user;
-            return ChefEnseignantDto.builder()
-                    .id(chef.getId())
-                    .firstName(chef.getFirstname())
-                    .lastName(chef.getLastname())
-                    .role(chef.getRole())
-                    .email(chef.getEmail())
-                    .matiere(chef.getMatiere())
-                    .departementId(chef.getDepartementId())
-                    .chefDepartementId(chef.getDepartementId())
-                    .disponibilite(chef.getDisponibilite())
-                    .build();
-        } else if ("ENSEIGNANT".equals(role.name())) {
-            Enseignant enseignant = (Enseignant) user;
-            return EnseignantDto.builder()
-                    .id(enseignant.getId())
-                    .firstName(enseignant.getFirstname())
-                    .lastName(enseignant.getLastname())
-                    .role(enseignant.getRole())
-                    .email(enseignant.getEmail())
-                    .matiere(enseignant.getMatiere())
-                    .departementId(enseignant.getDepartementId())
-                    .disponibilite(enseignant.getDisponibilite())
-                    .build();
-        } else {
-            return UserDto.builder()
-                    .id(user.getId())
-                    .firstName(user.getFirstname())
-                    .lastName(user.getLastname())
-                    .role(user.getRole())
-                    .email(user.getEmail())
-                    .build();
-        }
+        return UserDto.builder()
+                .id(user.getId())
+                .firstName(user.getFirstname())
+                .lastName(user.getLastname())
+                .role(user.getRole())
+                .email(user.getEmail())
+                .build();
     }
 
 }
