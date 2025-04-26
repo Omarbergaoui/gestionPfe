@@ -157,7 +157,6 @@ public class AuthenticationService {
                 .orElse(false);
 
         if (!jwtService.isTokenValid(refreshToken, user) || !isTokenValid) {
-
             Cookie refreshTokenCookie = new Cookie("refresh_token", null);
             refreshTokenCookie.setHttpOnly(true);
             refreshTokenCookie.setSecure(true);

@@ -6,6 +6,6 @@ public record EnseignantRequest(
         String email,
         String password,
         String matiere,
-        String DepartementName
+        String DepartementId
 ) {
 }

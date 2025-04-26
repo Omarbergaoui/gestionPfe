@@ -16,7 +16,7 @@ public class DepartementController {
     @Autowired
     private final DepartementService departementService;
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<Departement> createDepartement(@RequestBody DepartementReq departement) {
         return ResponseEntity.ok(departementService.createDepartement(departement));
     }
@@ -26,7 +26,7 @@ public class DepartementController {
         return ResponseEntity.ok(departementService.getDepartementById(new DepartementRequest(id)));
     }
 
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<List<Departement>> getAllDepartements() {
         return ResponseEntity.ok(departementService.getAllDepartements());
     }
@@ -41,7 +41,6 @@ public class DepartementController {
         return ResponseEntity.ok(departementService.updateDepartementById(new DepartementRequest(id),departementName));
     }
 
-    // 9bal matfasakh l departement lazem l enseignants ili fi westou yemchiw l departement ekher
     @DeleteMapping("/id")
     public ResponseEntity<String> deleteDepartement(@RequestParam String idDeparttodelete,@RequestParam String idDeparttoreassign) {
         return ResponseEntity.ok(departementService.deleteDepartement(new DepartementRequest(idDeparttodelete),new DepartementRequest(idDeparttoreassign)));
@@ -55,6 +54,16 @@ public class DepartementController {
     @PutMapping("/Update/Chef")
     public ResponseEntity<Departement> changerChefs(@RequestParam String idDepartement,@RequestParam String idChef){
         return ResponseEntity.ok(departementService.updateDepartementChefById(new DepartementRequest(idDepartement),new RequestIdChef(idChef)));
+    }
+
+    @PutMapping("/Affecter/Chef")
+    public ResponseEntity<Departement> AffecterChefDepartement(@RequestParam String idDepartement,@RequestParam String idChef){
+        return ResponseEntity.ok(departementService.AffecterChefDepartment(new DepartementRequest(idDepartement),new RequestIdChef(idChef)));
+    }
+
+    @PutMapping("/Remove/Chef")
+    public ResponseEntity<Departement> RemoveChefDepartement(@RequestParam String idDepartement){
+        return ResponseEntity.ok(departementService.RemoveChefDepartement(new DepartementRequest(idDepartement)));
     }
 
     @GetMapping("/enseignants")

@@ -3,12 +3,14 @@ import com.Application.Gestion.des.PFE.disponibilte.AvailableDateException;
 import com.Application.Gestion.des.PFE.disponibilte.DisponibilityNotFoundException;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -61,7 +63,18 @@ public class SalleService {
 
 
     public List<Salle> getAllSalle(){
-        return salleRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        List<Salle> salles = salleRepository.findAll();
+
+        for (Salle salle : salles) {
+            if (salle.getDisponibilite() != null) {
+                List<LocalDateTime> disposFutures = salle.getDisponibilite().stream()
+                        .filter(d -> d.isAfter(now))
+                        .collect(Collectors.toList());
+                salle.setDisponibilite(disposFutures);
+            }
+        }
+        return salles;
     }
 
 

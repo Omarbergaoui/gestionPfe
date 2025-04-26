@@ -10,4 +10,7 @@ public interface SalleRepository extends MongoRepository<Salle,String> {
     Optional<Salle> findByNom(String name);
     List<Salle> findByDisponibiliteNotContaining(LocalDateTime date);
     List<Salle> findByDisponibiliteContaining(LocalDateTime date);
+    List<Salle> findAllByIdIn(List<String> ids);
+    List<Salle> findByIdNotIn(List<String> ids);
+
 }

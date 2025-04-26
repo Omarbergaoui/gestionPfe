@@ -17,27 +17,16 @@ public class DepartementService {
     private final DepartementRepository departementRepository;
     private final EnseignantRepository enseignantRepository;
 
-    public Departement createDepartement(DepartementReq departement) {
-        if (departementRepository.findByNom(departement.Name()).isPresent()) {
+    public Departement createDepartement(DepartementReq departementReq) {
+        if (departementRepository.findByNom(departementReq.Name()).isPresent()) {
                 throw new DepartmentNotFoundException("A department with this name already exists.");
         }
-        if(enseignantRepository.findById(departement.Chefdepartementid()).isEmpty()){
-                throw new EnseignantNotFoundException("User not found");
-        }
-        Enseignant enseignant = enseignantRepository.findById(departement.Chefdepartementid()).get();
-        if(enseignant.getRole().equals(Role.CHEFDEPARTEMENT)|| enseignant.getRole().equals(Role.ADMIN)){
-            throw new EnseignantNotFoundException("User not found");
-        }
-        Departement departement1= departementRepository.save(
+        return departementRepository.save(
                 Departement.builder()
-                        .nom(departement.Name())
-                        .chefdepartement(enseignantRepository.findById(departement.Chefdepartementid()).get())
+                        .nom(departementReq.Name())
+                        .chefdepartement(null)
                         .build()
         );
-        enseignant.setRole(Role.CHEFDEPARTEMENT);
-        enseignant.setDepartementId(departement1);
-        enseignantRepository.save(enseignant);
-        return departement1;
     }
 
     public Departement getDepartementById(DepartementRequest req) {
@@ -84,7 +73,7 @@ public class DepartementService {
             throw new EnseignantNotFoundException("User not found");
         }
         Enseignant nouveauenseignant = enseignantRepository.findById(requestIdChef.id()).get();
-        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT)){
+        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT) || !nouveauenseignant.getDepartementId().equals(departement)){
             throw new EnseignantNotFoundException("User not found");
         }
         if(enseignantRepository.findById(departement.getChefdepartement().getId()).isEmpty()){
@@ -94,9 +83,38 @@ public class DepartementService {
         ancienenseignant.setRole(Role.ENSEIGNANT);
         enseignantRepository.save(ancienenseignant);
         nouveauenseignant.setRole(Role.CHEFDEPARTEMENT);
-        nouveauenseignant.setDepartementId(departement);
         departement.setChefdepartement(nouveauenseignant);
         enseignantRepository.save(nouveauenseignant);
+        return departementRepository.save(departement);
+    }
+
+    public Departement AffecterChefDepartment(DepartementRequest request,RequestIdChef requestIdChef){
+        Departement departement = getDepartementById(request);
+        if(departement.getChefdepartement()!=null){
+            throw new ChefDepartementFound("This department already has a designated head.");
+        }
+        if(enseignantRepository.findById(requestIdChef.id()).isEmpty()){
+            throw new EnseignantNotFoundException("User not found");
+        }
+        Enseignant nouveauenseignant = enseignantRepository.findById(requestIdChef.id()).get();
+        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT) || !nouveauenseignant.getDepartementId().equals(departement)){
+            throw new EnseignantNotFoundException("User not found");
+        }
+        departement.setChefdepartement(nouveauenseignant);
+        nouveauenseignant.setRole(Role.CHEFDEPARTEMENT);
+        enseignantRepository.save(nouveauenseignant);
+        return departementRepository.save(departement);
+    }
+
+    public Departement RemoveChefDepartement(DepartementRequest request){
+        Departement departement = getDepartementById(request);
+        if(enseignantRepository.findById(departement.getChefdepartement().getId()).isEmpty()){
+            throw new EnseignantNotFoundException("User not found");
+        }
+        Enseignant ancienenseignant = enseignantRepository.findById(departement.getChefdepartement().getId()).get();
+        ancienenseignant.setRole(Role.ENSEIGNANT);
+        enseignantRepository.save(ancienenseignant);
+        departement.setChefdepartement(null);
         return departementRepository.save(departement);
     }
 
@@ -113,6 +131,7 @@ public class DepartementService {
         departementRepository.delete(departementToDelete);
         return "Department successfully deleted and enseignants reassigned.";
     }
+
 
 
 
@@ -136,6 +155,9 @@ public class DepartementService {
 
     public EnseignantDto getChefDepartementById(DepartementRequest departementRequest) {
         Departement departement =  getDepartementById(departementRequest);
+        if(departement.getChefdepartement()==null){
+            throw new EnseignantNotFoundException("This department does not have a head assigned yet");
+        }
         if(enseignantRepository.findById(departement.getChefdepartement().getId()).isEmpty()){
             throw new EnseignantNotFoundException("User not found");
         }
@@ -152,25 +174,23 @@ public class DepartementService {
                 .build();
     }
 
-    public List<EnseignantDto> getAllChefs(){
-        return departementRepository.findAll()
-                .stream()
-                .map(departement -> {
-                    if(enseignantRepository.findById(departement.getChefdepartement().getId()).isEmpty()){
-                        throw new EnseignantNotFoundException("User not found");
-                    }
-                    Enseignant enseignant = enseignantRepository.findById(departement.getChefdepartement().getId()).get();
-                    return  EnseignantDto.builder()
-                            .id(enseignant.getId())
-                            .firstName(enseignant.getFirstname())
-                            .lastName(enseignant.getLastname())
-                            .role(enseignant.getRole())
-                            .email(enseignant.getEmail())
-                            .matiere(enseignant.getMatiere())
-                            .departementId(enseignant.getDepartementId())
-                            .disponibilite(enseignant.getDisponibilite())
-                            .build();
-                })
+    public List<EnseignantDto> getAllChefs() {
+        return departementRepository.findAll().stream()
+                .map(Departement::getChefdepartement)
+                .filter(Objects::nonNull)
+                .map(chef -> enseignantRepository.findById(chef.getId())
+                        .orElseThrow(() -> new EnseignantNotFoundException("User not found")))
+                .map(enseignant -> EnseignantDto.builder()
+                        .id(enseignant.getId())
+                        .firstName(enseignant.getFirstname())
+                        .lastName(enseignant.getLastname())
+                        .role(enseignant.getRole())
+                        .email(enseignant.getEmail())
+                        .matiere(enseignant.getMatiere())
+                        .departementId(enseignant.getDepartementId())
+                        .disponibilite(enseignant.getDisponibilite())
+                        .build())
                 .collect(Collectors.toList());
     }
+
 }

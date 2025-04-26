@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,49 +48,14 @@ public class EnseignantService {
         if (enseignantRepository.findByEmail(enseignantRequest.email()) != null) {
             throw new EnseignantAlreadyExistsException("A teacher with this email already exists.");
         }
-        Optional<Departement> optionalDepartement = departementRepository.findByNom(enseignantRequest.DepartementName());
+        Optional<Departement> optionalDepartement = departementRepository.findById(enseignantRequest.DepartementId());
         if (optionalDepartement.isEmpty()) {
-            Departement departement = departementRepository.save(Departement.builder()
-                    .nom(enseignantRequest.DepartementName())
-                    .chefdepartement(null)
-                    .build());
-
-            String activationCode = generateRandomCode();
-            emailService.sendActivationEmail(enseignantRequest.email(), activationCode);
-
-            Enseignant enseignant = Enseignant.builder()
-                    .firstname(enseignantRequest.firstName())
-                    .lastname(enseignantRequest.lastName())
-                    .matiere(enseignantRequest.matiere())
-                    .email(enseignantRequest.email())
-                    .role(Role.CHEFDEPARTEMENT)
-                    .password(passwordEncoder.encode(enseignantRequest.password()))
-                    .activationcode(activationCode)
-                    .departementId(departement)
-                    .accountLocked(false)
-                    .enable(false)
-                    .build();
-
-            enseignantRepository.save(enseignant);
-            departement.setChefdepartement(enseignant);
-            departementRepository.save(departement);
-
-            return EnseignantDto.builder()
-                    .id(enseignant.getId())
-                    .firstName(enseignant.getFirstname())
-                    .lastName(enseignant.getLastname())
-                    .role(enseignant.getRole())
-                    .email(enseignant.getEmail())
-                    .matiere(enseignant.getMatiere())
-                    .departementId(enseignant.getDepartementId())
-                    .disponibilite(enseignant.getDisponibilite())
-                    .build();
+            throw new DepartmentNotFoundException("The specified department does not exist.");
         }
         else {
             Departement departement = optionalDepartement.get();
             String activationCode = generateRandomCode();
             emailService.sendActivationEmail(enseignantRequest.email(), activationCode);
-
             Enseignant enseignant = Enseignant.builder()
                     .firstname(enseignantRequest.firstName())
                     .lastname(enseignantRequest.lastName())
@@ -129,11 +95,18 @@ public class EnseignantService {
                         .email(enseignant.getEmail())
                         .matiere(enseignant.getMatiere())
                         .departementId(enseignant.getDepartementId())
-                        .disponibilite(enseignant.getDisponibilite())
+                        .disponibilite(
+                                enseignant.getDisponibilite() != null
+                                        ? enseignant.getDisponibilite().stream()
+                                        .filter(d -> d.isAfter(LocalDateTime.now()))
+                                        .collect(Collectors.toList())
+                                        : new ArrayList<>()
+                        )
                         .build()
                 )
                 .collect(Collectors.toList());
     }
+
 
 
     public EnseignantDto getEnseignantByEmail(EnseignantRequestName enseignantRequestName) {
@@ -153,7 +126,11 @@ public class EnseignantService {
                     .email(enseignant.getEmail())
                     .matiere(enseignant.getMatiere())
                     .departementId(enseignant.getDepartementId())
-                    .disponibilite(enseignant.getDisponibilite())
+                    .disponibilite(enseignant.getDisponibilite() != null
+                            ? enseignant.getDisponibilite().stream()
+                            .filter(d -> d.isAfter(LocalDateTime.now()))
+                            .collect(Collectors.toList())
+                            : new ArrayList<>())
                     .build();
 
         }
@@ -177,7 +154,13 @@ public class EnseignantService {
                     .email(enseignant.get().getEmail())
                     .matiere(enseignant.get().getMatiere())
                     .departementId(enseignant.get().getDepartementId())
-                    .disponibilite(enseignant.get().getDisponibilite())
+                    .disponibilite(
+                            enseignant.get().getDisponibilite() != null
+                            ? enseignant.get().getDisponibilite().stream()
+                            .filter(d -> d.isAfter(LocalDateTime.now()))
+                            .collect(Collectors.toList())
+                            : new ArrayList<>()
+                    )
                     .build();
         }
     }
@@ -222,7 +205,13 @@ public class EnseignantService {
                     .email(enseignant.getEmail())
                     .matiere(enseignant.getMatiere())
                     .departementId(enseignant.getDepartementId())
-                    .disponibilite(enseignant.getDisponibilite())
+                    .disponibilite(
+                            enseignant.getDisponibilite() != null
+                                    ? enseignant.getDisponibilite().stream()
+                                    .filter(d -> d.isAfter(LocalDateTime.now()))
+                                    .collect(Collectors.toList())
+                                    : new ArrayList<>()
+                    )
                     .build();
         }
     }
@@ -255,7 +244,7 @@ public class EnseignantService {
        }
        else{
            if(enseignant.getRole().equals(Role.CHEFDEPARTEMENT)){
-               throw new EnseignantNotFoundException("");
+               throw new EnseignantNotFoundException("Please select another head of department before updating this one.");
            }
            Departement departement= departementRepository.findById(departementRequest.id()).get();
            enseignant.setDepartementId(departement);
@@ -268,7 +257,13 @@ public class EnseignantService {
                    .email(enseignant.getEmail())
                    .matiere(enseignant.getMatiere())
                    .departementId(enseignant.getDepartementId())
-                   .disponibilite(enseignant.getDisponibilite())
+                   .disponibilite(
+                           enseignant.getDisponibilite() != null
+                           ? enseignant.getDisponibilite().stream()
+                           .filter(d -> d.isAfter(LocalDateTime.now()))
+                           .collect(Collectors.toList())
+                           : new ArrayList<>()
+                   )
                    .build();
        }
    }
@@ -278,7 +273,7 @@ public class EnseignantService {
             LocalDateTime dateTime = LocalDateTime.parse(dateTimeStr, formatter);
             return dateTime;
         } catch (DateTimeParseException e) {
-            throw new InvalidDateFormatException("Format de date invalide. Utilisez yyyy/MM/dd HH:mm");
+            throw new InvalidDateFormatException("Invalid date format. Use yyyy/MM/dd HH:mm");
         }
     }
 
@@ -312,7 +307,13 @@ public class EnseignantService {
                 .email(enseignant.getEmail())
                 .matiere(enseignant.getMatiere())
                 .departementId(enseignant.getDepartementId())
-                .disponibilite(enseignant.getDisponibilite())
+                .disponibilite(
+                        enseignant.getDisponibilite() != null
+                                ? enseignant.getDisponibilite().stream()
+                                .filter(d -> d.isAfter(LocalDateTime.now()))
+                                .collect(Collectors.toList())
+                                : new ArrayList<>()
+                )
                 .build();
     }
 
@@ -338,7 +339,13 @@ public class EnseignantService {
                 .email(enseignant.getEmail())
                 .matiere(enseignant.getMatiere())
                 .departementId(enseignant.getDepartementId())
-                .disponibilite(enseignant.getDisponibilite())
+                .disponibilite(
+                        enseignant.getDisponibilite() != null
+                        ? enseignant.getDisponibilite().stream()
+                        .filter(d -> d.isAfter(LocalDateTime.now()))
+                        .collect(Collectors.toList())
+                        : new ArrayList<>()
+                )
                 .build();
     }
 
@@ -355,7 +362,12 @@ public class EnseignantService {
                         .email(enseignant.getEmail())
                         .matiere(enseignant.getMatiere())
                         .departementId(enseignant.getDepartementId())
-                        .disponibilite(enseignant.getDisponibilite())
+                        .disponibilite(
+                                enseignant.getDisponibilite() != null
+                                ? enseignant.getDisponibilite().stream()
+                                .filter(d -> d.isAfter(LocalDateTime.now()))
+                                .collect(Collectors.toList())
+                                : new ArrayList<>())
                         .build()
                 )
                 .collect(Collectors.toList());
@@ -374,7 +386,13 @@ public class EnseignantService {
                         .email(enseignant.getEmail())
                         .matiere(enseignant.getMatiere())
                         .departementId(enseignant.getDepartementId())
-                        .disponibilite(enseignant.getDisponibilite())
+                        .disponibilite(
+                                enseignant.getDisponibilite() != null
+                                        ? enseignant.getDisponibilite().stream()
+                                        .filter(d -> d.isAfter(LocalDateTime.now()))
+                                        .collect(Collectors.toList())
+                                        : new ArrayList<>()
+                        )
                         .build()
                 )
                 .collect(Collectors.toList());
