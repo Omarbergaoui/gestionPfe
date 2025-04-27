@@ -56,23 +56,85 @@ public class PFEService {
             throw new InvalidDateException("Hour must be one of: 08:00, 09:00, 10:00, 11:00, 13:00, 14:00, 15:00, 16:00");
         }
         DayOfWeek day = dateTime.getDayOfWeek();
-        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
-            throw new InvalidDateException("PFE cannot be scheduled on Saturday or Sunday");
+        if (day == DayOfWeek.SUNDAY) {
+            throw new InvalidDateException("PFE cannot be scheduled on Sunday");
         }
     }
 
     public PFE createPfe(PFERequest pfeRequest) {
         validatePfeDateTime(pfeRequest.dateTime());
-        Optional<Planning> planningOpt = planningRepository.findById(pfeRequest.idPlanning());
+        Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
         if (planningOpt.isEmpty()) {
             throw new PlanningNotFound("Planning not found");
         }
         Planning planning = planningOpt.get();
 
-        if (!planning.getAnneeuniversitaire().equals(getAnneeUniversitaire())) {
-            throw new PlanningNotFound("Planning not found for the current academic year");
+        if (pfeRequest.dateTime().toLocalDate().isAfter(planning.getDatefin()) ||
+                pfeRequest.dateTime().toLocalDate().isBefore(planning.getDatedebut())) {
+            throw new InvalidDateException("Invalid date for the PFE");
         }
 
+        Enseignant encadrant = enseignantRepository.findById(pfeRequest.encadrant())
+                .orElseThrow(() -> new EnseignantNotFoundException("Encadrant not found"));
+
+        Enseignant president = enseignantRepository.findById(pfeRequest.president())
+                .orElseThrow(() -> new EnseignantNotFoundException("President not found"));
+
+        Enseignant rapporteur = enseignantRepository.findById(pfeRequest.rapporteur())
+                .orElseThrow(() -> new EnseignantNotFoundException("Rapporteur not found"));
+
+        LocalDateTime dateTime = pfeRequest.dateTime();
+        if (encadrant.getDisponibilite().contains(dateTime)) {
+            throw new InvalidDateException("Encadrant unavailable at that date");
+        }
+        if (president.getDisponibilite().contains(dateTime)) {
+            throw new InvalidDateException("President unavailable at that date");
+        }
+        if (rapporteur.getDisponibilite().contains(dateTime)) {
+            throw new InvalidDateException("Rapporteur unavailable at that date");
+        }
+
+        if (encadrant.equals(president) || encadrant.equals(rapporteur) || president.equals(rapporteur)) {
+            throw new IllegalArgumentException("Encadrant, President, and Rapporteur must be different");
+        }
+
+        Salle salle = salleRepository.findById(pfeRequest.Salle())
+                .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
+
+        if (salle.getDisponibilite().contains(dateTime)) {
+            throw new InvalidDateException("Salle is unavailable at that date");
+        }
+        if (pfeRepository.findByPlanningidAndEtudiantemail(planning.getId(), pfeRequest.emailetudiant()).isPresent()) {
+            throw new PfeFoundException("A PFE already exists for this student in the selected planning");
+        }
+
+        encadrant.getDisponibilite().add(dateTime);
+        rapporteur.getDisponibilite().add(dateTime);
+        president.getDisponibilite().add(dateTime);
+        salle.getDisponibilite().add(dateTime);
+        enseignantRepository.save(encadrant);
+        enseignantRepository.save(rapporteur);
+        enseignantRepository.save(president);
+        salleRepository.save(salle);
+        PFE pfe = new PFE();
+        pfe.setPlanningid(planning);
+        pfe.setDateheure(dateTime);
+        pfe.setEncadreur(encadrant);
+        pfe.setPresident(president);
+        pfe.setRapporteur(rapporteur);
+        pfe.setSalle(salle);
+        pfe.setTitrerapport(pfeRequest.nomderapport());
+        pfe.setEtudiantemail(pfe.getEtudiantemail());
+        return pfeRepository.save(pfe);
+    }
+
+    public PFE updatePfe(PFERequest pfeRequest) {
+        validatePfeDateTime(pfeRequest.dateTime());
+        Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
+        if (planningOpt.isEmpty()) {
+            throw new PlanningNotFound("Planning not found");
+        }
+        Planning planning = planningOpt.get();
         if (pfeRequest.dateTime().toLocalDate().isAfter(planning.getDatefin()) ||
                 pfeRequest.dateTime().toLocalDate().isBefore(planning.getDatedebut())) {
             throw new InvalidDateException("Invalid date for the PFE");

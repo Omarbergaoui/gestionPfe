@@ -7,16 +7,17 @@ import com.Application.Gestion.des.PFE.enseignant.Enseignant;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantRepository;
 import com.Application.Gestion.des.PFE.pfe.PFE;
 import com.Application.Gestion.des.PFE.pfe.PfeRepository;
-import com.Application.Gestion.des.PFE.salle.DisponibilityReq;
 import com.Application.Gestion.des.PFE.salle.Salle;
 import com.Application.Gestion.des.PFE.salle.SalleNotFoundException;
 import com.Application.Gestion.des.PFE.salle.SalleRepository;
+import com.Application.Gestion.des.PFE.salle.SalleRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,7 +72,7 @@ public class PlanningService {
 
     public String createPlanning(PlanningRequest Request){
         String anneeuniversitaire = getAnneeUniversitaire();
-        if(planningRepository.findByAnneeuniversitaire(anneeuniversitaire).isEmpty()){
+        if(!planningRepository.findByAnneeuniversitaire(anneeuniversitaire).isEmpty()){
             throw new PlanningFound("Planning Found");
         }
         validatePlanningDates(Request.dateDebut(),Request.dateFin());
@@ -159,65 +160,20 @@ public class PlanningService {
         }
     }*/
 
-    public Planning AjouterSalles(SallesRequest sallesRequest,PlanningIdRequest planningIdRequest){
+    public Planning update(PlanningIdRequest planningIdRequest, PlanningStartEndDate planningStartEndDate, SallesRequest sallesRequest){
         Planning planning = GetPlanningById(planningIdRequest);
         if(!pfeRepository.findByPlanningid(planning.getId()).isEmpty() && pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning.getId()).getDateheure().isBefore(LocalDateTime.now())){
             throw new PlanningException("Planning can't be modified");
         }
         List<Salle> foundSalles = salleRepository.findAllById(sallesRequest.salleids());
-        if (foundSalles.size() != sallesRequest.salleids().size()) {
-            throw new SalleNotFoundException("One or more salle IDs are invalid.");
+        if (foundSalles.size() != sallesRequest.salleids().size() || foundSalles.isEmpty()) {
+            throw new SalleNotFoundException("Salle can't be empty Or One or more salle IDs are invalid.");
         }
-        List<Salle> notInPlanning = foundSalles.stream()
-                .filter(salle -> !planning.getSalles().contains(salle))
-                .toList();
-        planning.getSalles().addAll(notInPlanning);
+        planning.setSalles(foundSalles);
+        validatePlanningDates(planningStartEndDate.start(),planningStartEndDate.end());
+        planning.setDatedebut(planningStartEndDate.start());
+        planning.setDatefin(planningStartEndDate.end());
         return planningRepository.save(planning);
     }
-
-    public List<Salle> SallePourAffecter(PlanningIdRequest planningIdRequest){
-        Planning planning=GetPlanningById(planningIdRequest);
-        return salleRepository.findByIdNotIn(planning.getSalles().stream().map(Salle::getId)
-                        .toList()
-        );
-    }
-
-    public List<Salle> SalleDejaAffecte(PlanningIdRequest planningIdRequest){
-        Planning planning=GetPlanningById(planningIdRequest);
-        return salleRepository.findAllByIdIn(planning.getSalles().stream().map(Salle::getId)
-                .toList());
-    }
-
-    public Planning modifierStartEndDate(PlanningIdRequest planningIdRequest,PlanningStartEndDate planningStartEndDate){
-        Planning planning = GetPlanningById(planningIdRequest);
-        if(!pfeRepository.findByPlanningid(planning.getId()).isEmpty()){
-            throw new PlanningException("Planning can't be modified");
-        }
-        else{
-            validatePlanningDates(planningStartEndDate.start(),planningStartEndDate.end());
-            planning.setDatedebut(planningStartEndDate.start());
-            planning.setDatefin(planningStartEndDate.end());
-            return planningRepository.save(planning);
-        }
-    }
-
-    public List<Salle> SalleParmiSallePlanningDisponible(PlanningIdRequest planningIdRequest,DisponibiliteRequest disponibiliteRequest) {
-        Planning planning = GetPlanningById(planningIdRequest);
-        return planning.getSalles()
-                .stream()
-                .filter(salle -> !salle.getDisponibilite().contains(disponibiliteRequest.date()))
-                .toList();
-    }
-
-
-    public List<Salle> SalleParmiSallePlanningIndisponible(PlanningIdRequest planningIdRequest,DisponibiliteRequest disponibiliteRequest) {
-        Planning planning = GetPlanningById(planningIdRequest);
-        return planning.getSalles()
-                .stream()
-                .filter(salle -> salle.getDisponibilite().contains(disponibiliteRequest.date()))
-                .toList();
-    }
-
-
 
 }

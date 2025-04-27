@@ -71,14 +71,14 @@ public class EnseignantController {
     @PutMapping("/disponibilite/add")
     public ResponseEntity<EnseignantDto> addDisponibilite(
             @AuthenticationPrincipal UserEntity user,
-            @RequestBody DisponibilityReq request) {
+            @RequestBody Disponibility request) {
         return ResponseEntity.ok(enseignantService.ajouterdisponibilite(request, user));
     }
 
     @PutMapping("/disponibilite/delete")
     public ResponseEntity<EnseignantDto> removeDisponibilite(
             @AuthenticationPrincipal UserEntity user,
-            @RequestBody DisponibilityReq request) {
+            @RequestBody Disponibility request) {
         return ResponseEntity.ok(enseignantService.deletedisponibilite(request, user));
     }
 

@@ -20,6 +20,7 @@ import com.Application.Gestion.des.PFE.user.UserEntity;
 import com.Application.Gestion.des.PFE.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.catalina.Store;
+import org.springframework.cglib.core.Local;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -310,19 +311,34 @@ public class EnseignantService {
     }
 
 
-    public EnseignantDto ajouterdisponibilite(DisponibilityReq disponibilityReq, UserEntity user) {
-        LocalDateTime localDateTime = parseAndValidateDate(disponibilityReq.dateTime());
-        if (!isValidDateTime(localDateTime)) {
+    public EnseignantDto ajouterdisponibilite(Disponibility disponibility, UserEntity user) {
+        LocalDateTime startlocalDateTime = parseAndValidateDate(disponibility.startdate());
+        LocalDateTime endlocalDateTime = parseAndValidateDate(disponibility.enddate());
+        if (!isValidDateTime(startlocalDateTime) && !isValidDateTime(endlocalDateTime)) {
             throw new InvalidDateException("Date is invalid or in the past.");
+        }
+        if(startlocalDateTime.isAfter(endlocalDateTime)){
+            throw new InvalidDateException("Date is invalid");
         }
         if (user == null || user.getRole() == Role.ADMIN) {
             throw new UserNotFoundException("User not Found");
         }
         Enseignant enseignant = (Enseignant) user;
-        if (enseignant.getDisponibilite().contains(localDateTime)) {
-            throw new AvailableDateException("This date is already available.");
+        List<Integer> heuresValides = Arrays.asList(8, 9, 10, 11, 13, 14, 15, 16);
+
+        while (!startlocalDateTime.isAfter(endlocalDateTime)) {
+            if (heuresValides.contains(startlocalDateTime.getHour())) {
+                if (!enseignant.getDisponibilite().contains(startlocalDateTime)) {
+                    enseignant.getDisponibilite().add(startlocalDateTime);
+                }
+            }
+
+            startlocalDateTime = startlocalDateTime.plusHours(1);
+
+            if (startlocalDateTime.getHour() > 16) {
+                startlocalDateTime = startlocalDateTime.plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0);
+            }
         }
-        enseignant.getDisponibilite().add(localDateTime);
         enseignantRepository.save(enseignant);
         return EnseignantDto.builder()
                 .id(enseignant.getId())
@@ -342,19 +358,34 @@ public class EnseignantService {
                 .build();
     }
 
-    public EnseignantDto deletedisponibilite(DisponibilityReq disponibilityReq, UserEntity user) {
-        LocalDateTime localDateTime = parseAndValidateDate(disponibilityReq.dateTime());
-        if (!isValidDateTime(localDateTime)) {
+    public EnseignantDto deletedisponibilite(Disponibility disponibility, UserEntity user) {
+        LocalDateTime startlocalDateTime = parseAndValidateDate(disponibility.startdate());
+        LocalDateTime endlocalDateTime = parseAndValidateDate(disponibility.enddate());
+        if (!isValidDateTime(startlocalDateTime) && !isValidDateTime(endlocalDateTime)) {
             throw new InvalidDateException("Date is invalid or in the past.");
+        }
+        if(startlocalDateTime.isAfter(endlocalDateTime)){
+            throw new InvalidDateException("Date is invalid");
         }
         if (user == null || user.getRole() == Role.ADMIN) {
             throw new UserNotFoundException("User not Found");
         }
         Enseignant enseignant = (Enseignant) user;
-        if (!enseignant.getDisponibilite().contains(localDateTime)) {
-            throw new DisponibilityNotFoundException("This date is not available for removal.");
+        List<Integer> heuresValides = Arrays.asList(8, 9, 10, 11, 13, 14, 15, 16);
+
+        while (!startlocalDateTime.isAfter(endlocalDateTime)) {
+            if (heuresValides.contains(startlocalDateTime.getHour())) {
+                if (enseignant.getDisponibilite().contains(startlocalDateTime)) {
+                    enseignant.getDisponibilite().remove(startlocalDateTime);
+                }
+            }
+
+            startlocalDateTime = startlocalDateTime.plusHours(1);
+
+            if (startlocalDateTime.getHour() > 16) {
+                startlocalDateTime = startlocalDateTime.plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0);
+            }
         }
-        enseignant.getDisponibilite().remove(localDateTime);
         enseignantRepository.save(enseignant);
         return EnseignantDto.builder()
                 .id(enseignant.getId())

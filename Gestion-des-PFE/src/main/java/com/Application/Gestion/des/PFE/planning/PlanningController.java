@@ -32,29 +32,24 @@ public class PlanningController {
         return ResponseEntity.ok(planning);
     }
 
-//    @GetMapping("/getPfeById/{id}")
-//    public ResponseEntity<PFE> getPlanningPfeById(@PathVariable("id") Long id) {
-//        List<PFE> pfes = planningService.GetPlanningPfeById(new PlanningIdRequest(id));
-//        return ResponseEntity.ok(pfes);
-//    }
-//
-//    @GetMapping("/getPfeByAnneeUniversitaire")
-//    public ResponseEntity<List<PFE>> getPlanningPfeByAnneeUniversitaire(@RequestBody PlanningAnneeUniversitaireRequest request) {
-//        List<PFE> pfes = planningService.GetPlanningPfeByAnneeUniversitaire(request);
-//        return ResponseEntity.ok(pfes);
-//    }
-//
-//    @DeleteMapping("/delete/{id}")
-//    public ResponseEntity<String> deletePlanning(@PathVariable("id") Long id) {
-//        try {
-//            String response = pfeService.deletePlanning(new PlanningIdRequest(id));
-//            return ResponseEntity.ok(response);
-//        } catch (PlanningException e) {
-//            return ResponseEntity.status(400).body(e.getMessage());  // 400 Bad Request
-//        } catch (Exception e) {
-//            return ResponseEntity.status(500).body("An error occurred while deleting the planning");  // 500 Internal Server Error
-//        }
-//    }
+
+    @GetMapping("/getPfesByAnneeUniversitaire")
+    public ResponseEntity<List<PFE>> getPlanningPfeByAnneeUniversitaire(@RequestBody PlanningAnneeUniversitaireRequest request) {
+        List<PFE> pfes = planningService.GetPlanningPfeByAnneeUniversitaire(request);
+        return ResponseEntity.ok(pfes);
     }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deletePlanning(@PathVariable("id") String id) {
+        String response = planningService.deletePlanning(new PlanningIdRequest(id));
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<Planning> UpdatePlanning(@PathVariable("id") String id,@RequestBody PlanningRequest planningRequest) {
+        return ResponseEntity.ok(planningService.update(new PlanningIdRequest(id),new PlanningStartEndDate(planningRequest.dateDebut(),planningRequest.dateFin()),new SallesRequest(planningRequest.salleids())));
+    }
+
+}
 
 
