@@ -53,7 +53,6 @@ public class PlanningController {
     public ResponseEntity<List<Planning>> getAll(){
         return ResponseEntity.ok(planningService.getAll());
     }
-
 }
 
 

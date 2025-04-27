@@ -1,4 +1,5 @@
 package com.Application.Gestion.des.PFE.pfe;
+import com.Application.Gestion.des.PFE.Authentication.UserNotFoundException;
 import com.Application.Gestion.des.PFE.algorithme.Algorithme;
 import com.Application.Gestion.des.PFE.algorithme.GeneticSchedulerRT;
 import com.Application.Gestion.des.PFE.algorithme.Pfe;
@@ -15,9 +16,11 @@ import com.Application.Gestion.des.PFE.planning.PlanningRepository;
 import com.Application.Gestion.des.PFE.salle.Salle;
 import com.Application.Gestion.des.PFE.salle.SalleNotFoundException;
 import com.Application.Gestion.des.PFE.salle.SalleRepository;
+import com.Application.Gestion.des.PFE.user.UserEntity;
 import lombok.AllArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -119,7 +122,7 @@ public class PFEService {
             throw new IllegalArgumentException("Encadrant, President, and Rapporteur must be different");
         }
 
-        Salle salle = salleRepository.findById(pfeRequest.Salle())
+        Salle salle = salleRepository.findById(pfeRequest.salle())
                 .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
 
         if (salle.getDisponibilite().contains(dateTime)) {
@@ -364,21 +367,12 @@ public class PFEService {
         double mutationRate = 0.10;
         int elitismCount = 3;
         List< Pfe> p=new GeneticSchedulerRT(generer(pfes,usernames),salleNames,start,end,teacherUnavailability,roomUnavailability,populationSize,generations,crossoverRate,mutationRate,elitismCount).evoluer(generer(pfes,usernames),salleNames,teacherUnavailability,roomUnavailability,start,end);
-        System.out.println("omar");
+
         p.forEach(pfe ->
-                pfeRepository.save(
-                        PFE.builder()
-                                .encadreur(enseignantRepository.findByEmail(pfe.getEncadrantId()))
-                                .president(enseignantRepository.findByEmail(pfe.getPresidentId()))
-                                .rapporteur(enseignantRepository.findByEmail(pfe.getRapporteurId()))
-                                .titrerapport(pfe.getTitre())
-                                .dateheure(pfe.getDateHeure())
-                                .etudiantemail(pfe.getEmailetudiant())
-                                .planningid(planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire()).get())
-                                .salle(salleRepository.findByNom(pfe.getSalle()).get())
-                                .build()
-                )
-        );
+        {
+            String Salleid=salleRepository.findByNom(pfe.getSalle()).get().getId();
+            createPfe(new PFERequest(pfe.getEmailetudiant(), pfe.getTitre(), pfe.getEncadrantId(), pfe.getPresidentId(), pfe.getRapporteurId(), formatDateTime(pfe.getDateHeure()), Salleid));
+        });
     }
 
     public LocalTime parseTime(String timeString) {
@@ -417,6 +411,13 @@ public class PFEService {
         }
     }
 
+    public List<PFE> GetPfesByEnseignant(UserEntity user){
+        Enseignant enseignant = (Enseignant) enseignantRepository.findByEmail(user.getUsername());
+        if (enseignant == null) {
+            throw new UserNotFoundException("User not found");
+        }
+        return pfeRepository.findAllByEnseignantParticipation(enseignant.getId());
+    }
 
 
 }

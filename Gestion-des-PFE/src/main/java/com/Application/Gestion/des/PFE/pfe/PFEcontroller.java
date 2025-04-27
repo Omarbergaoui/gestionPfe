@@ -1,9 +1,12 @@
 package com.Application.Gestion.des.PFE.pfe;
 
 
+import com.Application.Gestion.des.PFE.user.UserEntity;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +25,11 @@ public class PFEcontroller {
     public ResponseEntity<String> uploadExcel(@RequestParam("file") MultipartFile file) throws IOException {
             pfeService.processExcelFile(file);
             return ResponseEntity.ok("Excel file processed successfully.");
+    }
+
+    @GetMapping("/mes-pfes")
+    public ResponseEntity<List<PFE>> getMyPfes(@AuthenticationPrincipal UserEntity user) {
+        return ResponseEntity.ok(pfeService.GetPfesByEnseignant(user));
     }
 
     @PostMapping("/create")
