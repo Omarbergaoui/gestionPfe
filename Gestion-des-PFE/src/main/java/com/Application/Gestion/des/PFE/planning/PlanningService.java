@@ -57,15 +57,15 @@ public class PlanningService {
 
     private void validatePlanningDates(LocalDate Start,LocalDate End) {
         if (Start.isAfter(End)) {
-            throw new IllegalArgumentException("Start date cannot be after end date.");
+            throw new RuntimeException("Start date cannot be after end date.");
         }
 
         if (Start.isEqual(End)) {
-            throw new IllegalArgumentException("Start date and end date cannot be the same.");
+            throw new RuntimeException("Start date and end date cannot be the same.");
         }
 
         if (Start.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Start date cannot be in the past.");
+            throw new RuntimeException("Start date cannot be in the past.");
         }
     }
 
@@ -73,7 +73,7 @@ public class PlanningService {
     public String createPlanning(PlanningRequest Request){
         String anneeuniversitaire = getAnneeUniversitaire();
         if(!planningRepository.findByAnneeuniversitaire(anneeuniversitaire).isEmpty()){
-            throw new PlanningFound("Planning Found");
+            throw new RuntimeException("Planning Found");
         }
         validatePlanningDates(Request.dateDebut(),Request.dateFin());
         List<Salle> foundSalles = salleRepository.findAllById(Request.salleids());
@@ -89,10 +89,12 @@ public class PlanningService {
         planningRepository.save(planning);
         return "Planning created successfully";
     }
-
+    public List<Planning> getAll(){
+        return planningRepository.findAll();
+    }
     public Planning GetPlanningById(PlanningIdRequest planningIdRequest){
         if(planningRepository.findById(planningIdRequest.id()).isEmpty()){
-            throw new PlanningNotFound("Planning not found");
+            throw new RuntimeException("Planning not found");
         }
         return planningRepository.findById(planningIdRequest.id()).get();
     }
@@ -100,7 +102,7 @@ public class PlanningService {
     public Planning GetPlanningByAnneeUniversitaire(PlanningAnneeUniversitaireRequest planningAnneeUniversitaireRequest){
         validateAnneeUniversitaireFormat(planningAnneeUniversitaireRequest.anneeuniversitaire());
         if(planningRepository.findByAnneeuniversitaire(planningAnneeUniversitaireRequest.anneeuniversitaire()).isEmpty()){
-            throw new PlanningNotFound("Planning not found");
+            throw new RuntimeException("Planning not found");
         }
         return planningRepository.findByAnneeuniversitaire(planningAnneeUniversitaireRequest.anneeuniversitaire()).get();
     }
@@ -116,7 +118,7 @@ public class PlanningService {
     public String deletePlanning(PlanningIdRequest planningIdRequest){
         Planning planning=GetPlanningById(planningIdRequest);
         if(!pfeRepository.findByPlanningid(planning.getId()).isEmpty() && pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning.getId()).getDateheure().isBefore(LocalDateTime.now())){
-            throw new PlanningException("Planning can't be deleted");
+            throw new RuntimeException("Planning can't be deleted");
         }
         else{
             List<PFE> pfes = pfeRepository.findByPlanningid(planning.getId());
@@ -163,7 +165,7 @@ public class PlanningService {
     public Planning update(PlanningIdRequest planningIdRequest, PlanningStartEndDate planningStartEndDate, SallesRequest sallesRequest){
         Planning planning = GetPlanningById(planningIdRequest);
         if(!pfeRepository.findByPlanningid(planning.getId()).isEmpty() && pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning.getId()).getDateheure().isBefore(LocalDateTime.now())){
-            throw new PlanningException("Planning can't be modified");
+            throw new RuntimeException("Planning can't be modified");
         }
         List<Salle> foundSalles = salleRepository.findAllById(sallesRequest.salleids());
         if (foundSalles.size() != sallesRequest.salleids().size() || foundSalles.isEmpty()) {

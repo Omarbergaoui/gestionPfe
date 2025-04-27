@@ -49,6 +49,10 @@ public class PlanningController {
     public ResponseEntity<Planning> UpdatePlanning(@PathVariable("id") String id,@RequestBody PlanningRequest planningRequest) {
         return ResponseEntity.ok(planningService.update(new PlanningIdRequest(id),new PlanningStartEndDate(planningRequest.dateDebut(),planningRequest.dateFin()),new SallesRequest(planningRequest.salleids())));
     }
+    @GetMapping("/all")
+    public ResponseEntity<List<Planning>> getAll(){
+        return ResponseEntity.ok(planningService.getAll());
+    }
 
 }
 

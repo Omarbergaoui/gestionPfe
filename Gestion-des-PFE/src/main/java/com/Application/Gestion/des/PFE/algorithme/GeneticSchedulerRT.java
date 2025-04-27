@@ -1,6 +1,9 @@
 package com.Application.Gestion.des.PFE.algorithme;
 
 
+import com.Application.Gestion.des.PFE.pfe.PFE;
+import com.Application.Gestion.des.PFE.planning.PlanningRepository;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset; // Needed for converting to milliseconds if required by genererDateHeure logic
@@ -12,98 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
-// Data structure for a Time Slot (used in unavailability)
-record TimeSlot(LocalDateTime start, LocalDateTime end) {
-    // Constructor with validation
-    public TimeSlot {
-        Objects.requireNonNull(start, "Start time cannot be null");
-        Objects.requireNonNull(end, "End time cannot be null");
-        if (!start.isBefore(end)) {
-            throw new IllegalArgumentException("Start time must be strictly before end time.");
-        }
-    }
-}
-
-// Data structure to hold the analysis results
-record AnalysisResult(double fitness, int roomConflicts, int teacherConflicts, int unavailabilityConflicts, double totalTeacherIdleTimeHours, String error) {
-    // Convenient constructor for success cases
-    AnalysisResult(double fitness, int roomConflicts, int teacherConflicts, int unavailabilityConflicts, double totalTeacherIdleTimeHours) {
-        this(fitness, roomConflicts, teacherConflicts, unavailabilityConflicts, totalTeacherIdleTimeHours, null);
-    }
-    // Convenient constructor for error cases
-    AnalysisResult(String error) {
-        this(0, -1, -1, -1, -1, error);
-    }
-}
-
-// Class representing a PFE (Projet de Fin d'Études) entry
-// Made mutable for salle and dateHeure which are assigned by the GA
-class Pfe {
-    private final String id;
-    private final String titre;
-    private final String encadrantId;
-    private final String rapporteurId;
-    private final String presidentId;
-    private String salle; // Mutable
-    private LocalDateTime dateHeure; // Mutable
-
-    public Pfe(String id, String titre, String encadrantId, String rapporteurId, String presidentId, String salle, LocalDateTime dateHeure) {
-        this.id = id;
-        this.titre = titre;
-        this.encadrantId = encadrantId;
-        this.rapporteurId = rapporteurId;
-        this.presidentId = presidentId;
-        this.salle = salle;
-        this.dateHeure = dateHeure;
-    }
-
-    // Copy constructor for creating deep copies within the GA
-    public Pfe(Pfe original) {
-        this.id = original.id;
-        this.titre = original.titre;
-        this.encadrantId = original.encadrantId;
-        this.rapporteurId = original.rapporteurId;
-        this.presidentId = original.presidentId;
-        this.salle = original.salle;
-        this.dateHeure = original.dateHeure; // LocalDateTime is immutable, so direct assignment is fine
-    }
-
-    // Getters
-    public String getId() { return id; }
-    public String getTitre() { return titre; }
-    public String getEncadrantId() { return encadrantId; }
-    public String getRapporteurId() { return rapporteurId; }
-    public String getPresidentId() { return presidentId; }
-    public String getSalle() { return salle; }
-    public LocalDateTime getDateHeure() { return dateHeure; }
-
-    // Setters for mutable fields
-    public void setSalle(String salle) { this.salle = salle; }
-    public void setDateHeure(LocalDateTime dateHeure) { this.dateHeure = dateHeure; }
-
-    // Helper to get all involved teacher IDs, filtering nulls/blanks
-    public List<String> getInvolvedTeachers() {
-        return Stream.of(encadrantId, rapporteurId, presidentId)
-                .filter(id -> id != null && !id.isBlank())
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public String toString() {
-        return "Pfe{" +
-                "id='" + id + '\'' +
-                ", salle='" + salle + '\'' +
-                ", dateHeure=" + (dateHeure != null ? dateHeure.toString() : "null") +
-                ", encadrantId='" + encadrantId + '\'' +
-                // ... add other fields if needed for debugging
-                '}';
-    }
-}
-
-
 public class GeneticSchedulerRT {
 
-    // --- Constants ---
     private static final Duration DEFENSE_DURATION = Duration.ofHours(1);
     private static final double HARD_CONSTRAINT_PENALTY = 10000.0;
     private static final double IDLE_TIME_WEIGHT = 1.0 / (3600.0 * 1000.0); // Penalty per millisecond of idle time
@@ -595,7 +508,6 @@ public class GeneticSchedulerRT {
                 .orElse(null);
 
         if (finalBest != null) {
-            // Store a deep copy as the result
             this.bestSchedule = finalBest.stream().map(Pfe::new).collect(Collectors.toList());
             System.out.println("Genetic Algorithm finished successfully.");
             return this.bestSchedule; // Return the copy
@@ -702,60 +614,22 @@ public class GeneticSchedulerRT {
         return new AnalysisResult(fitness, roomConflicts, teacherConflicts, unavailabilityConflicts, idleHours);
     }
 
-    public static void evoluer(List<Algorithme.PFE> pfes){
+    public List<Pfe> evoluer(List<Pfe> pfes, List<String> sallesDisponibles, Map<String, List<TimeSlot>> teacherUnavailability, Map<String, List<TimeSlot>> roomUnavailability, LocalDateTime dateDebutPlanning, LocalDateTime dateFinPlanning) {
         AtomicInteger counter = new AtomicInteger(1); // start from 1
 
-        List<Pfe> pfesData = pfes.stream()
-                .map(pfe -> {
-                    String id = String.format("PFE%03d", counter.getAndIncrement());
-                    return new Pfe(id, pfe.getRapport(), pfe.getEncadrant(), pfe.getRapporteur(), pfe.getPresident(), pfe.getSalle(), pfe.getDateHeure());
-                })
-                .collect(Collectors.toList());
-//        List<Pfe> pfesData = new ArrayList<>(List.of(
-//                new Pfe("PFE001", "Systeme X", "profA", "profB", "profC", null, null),
-//                new Pfe("PFE002", "Algo Y", "profD", "profA", "profE", null, null),
-//                new Pfe("PFE003", "Interface Z", "profB", "profF", "profG", null, null),
-//                new Pfe("PFE004", "Database W", "profA", "profH", "profI", null, null),
-//                new Pfe("PFE005", "Mobile App V", "profD", "profJ", "profA", null, null),
-//                new Pfe("PFE006", "AI Model", "profF", "profC", "profE", null, null),
-//                new Pfe("PFE007", "Network Sim", "profH", "profB", "profG", null, null),
-//                new Pfe("PFE008", "Security Proto", "profI", "profD", "profJ", null, null),
-//                new Pfe("PFE009", "Web Platform", "profA", "profF", "profH", null, null),
-//                new Pfe("PFE010", "Data Analysis", "profC", "profE", "profB", null, null)
-//                // Add more for realistic testing
-//        ));
-        List<String> sallesDisponibles = List.of("101","102","103","104","105","106");
-        LocalDateTime dateDebutPlanning = LocalDateTime.of(2024, 6, 17, 8, 0, 0); // June 17th, 8:00 AM
-        LocalDateTime dateFinPlanning = LocalDateTime.of(2024, 7, 17, 18, 0, 0);  // June 21st, 6:00 PM (exclusive)
 
-        // 4. Define Unavailability Data
-        Map<String, List<TimeSlot>> teacherUnavailability = Map.of(
-
-        );
-        Map<String, List<TimeSlot>> roomUnavailability = Map.of(
-
-        );
-
-        // 5. Configure GA parameters
-        int populationSize = 150;
-        int generations = 300; // Increase for harder problems
-        double crossoverRate = 0.85;
-        double mutationRate = 0.10; // Adjust based on results
-        int elitismCount = 3;
-
-        // 6. Create and run the Genetic Algorithm
         try {
             GeneticSchedulerRT gaRT = new GeneticSchedulerRT(
-                    pfesData, sallesDisponibles, dateDebutPlanning, dateFinPlanning,
+                    pfes, sallesDisponibles, dateDebutPlanning, dateFinPlanning,
                     teacherUnavailability, roomUnavailability,
                     populationSize, generations, crossoverRate, mutationRate, elitismCount
             );
 
             System.out.printf(" -> Population: %d, Generations: %d%n", populationSize, generations);
-            System.out.printf(" -> Scheduling %d PFEs between %s and %s%n", pfesData.size(), dateDebutPlanning, dateFinPlanning);
+            System.out.printf(" -> Scheduling %d PFEs between %s and %s%n", pfes.size(), dateDebutPlanning, dateFinPlanning);
 
             long startTime = System.currentTimeMillis();
-            List<Pfe> bestSchedule = gaRT.run();
+            bestSchedule = gaRT.run();
             long endTime = System.currentTimeMillis();
 
             System.out.printf("%n--- Genetic Algorithm Finished in %.3f seconds ---%n", (endTime - startTime) / 1000.0);
@@ -765,7 +639,7 @@ public class GeneticSchedulerRT {
                 AnalysisResult analysis = gaRT.analyzeSchedule(bestSchedule); // Analyze the final best schedule
 
                 System.out.println("\nBest Schedule Analysis:");
-                if(analysis.error() != null) {
+                if (analysis.error() != null) {
                     System.out.println("  Error during analysis: " + analysis.error());
                 } else {
                     System.out.printf("  Fitness: %.8f%n", analysis.fitness());
@@ -782,7 +656,7 @@ public class GeneticSchedulerRT {
                         System.out.println("\nOptimal Planning (Sorted by Date):");
                         for (Pfe pfe : bestSchedule) {
                             System.out.printf("  - %s: %s @ %s (Enc:%s, Rap:%s, Pres:%s)%n",
-                                    pfe.getId(), pfe.getSalle(),
+                                    pfe.getEmailetudiant(), pfe.getSalle(),
                                     (pfe.getDateHeure() != null ? pfe.getDateHeure().toString() : "N/A"), // Format date as needed
                                     pfe.getEncadrantId(), pfe.getRapporteurId(), pfe.getPresidentId());
                         }
@@ -792,10 +666,12 @@ public class GeneticSchedulerRT {
                         System.out.println("  Consider increasing generations/population, adjusting penalties, or checking problem constraints.");
                     }
                 }
+
             } else {
                 System.out.println("\n>>> Genetic algorithm did not produce a valid schedule. <<<");
                 System.out.println("   Check logs for errors during initialization or execution.");
             }
+
 
         } catch (IllegalArgumentException e) {
             System.err.println("\n--- Error during GA setup ---");
@@ -804,6 +680,7 @@ public class GeneticSchedulerRT {
             System.err.println("\n--- An unexpected error occurred during GA execution ---");
             e.printStackTrace();
         }
+        return bestSchedule;
     }
 
     // --- Main Method for Example Usage ---

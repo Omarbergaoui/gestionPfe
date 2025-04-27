@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @AllArgsConstructor
@@ -427,7 +428,7 @@ public class Algorithme {
 
         return pfes;
     }
-    public static List<PFE> generer(List<PFE> pfes,List<String> teachers){
+    public static List<Pfe> generer(List<PFE> pfes,List<String> teachers){
         assignRandomEncadrants(pfes, teachers, 3);
         List<Map<String, Object>> stats = computeTeacherStats(pfes);
         List<Map<String, Object>> diffsEncadRapporteur = computeEncadAllRolesDiff(stats);
@@ -470,7 +471,12 @@ public class Algorithme {
             System.out.println("Président: " + stat.get("president"));
             System.out.println("---------------");
         });
-        return pfAfterRap;
+        List<Pfe> pfesData = pfes.stream()
+                .map(pfe -> {
+                    return new Pfe(pfe.getEmailetudiant(), pfe.getRapport(), pfe.getEncadrant(), pfe.getRapporteur(), pfe.getPresident(), pfe.getSalle(), pfe.getDateHeure());
+                })
+                .collect(Collectors.toList());
+        return pfesData;
     }
     public static void main(String[] args) {
     }

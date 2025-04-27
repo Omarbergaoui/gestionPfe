@@ -1,10 +1,14 @@
 package com.Application.Gestion.des.PFE.pfe;
 import com.Application.Gestion.des.PFE.algorithme.Algorithme;
+import com.Application.Gestion.des.PFE.algorithme.GeneticSchedulerRT;
+import com.Application.Gestion.des.PFE.algorithme.Pfe;
+import com.Application.Gestion.des.PFE.algorithme.TimeSlot;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateFormatException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantNotFoundException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantRepository;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
+import com.Application.Gestion.des.PFE.enumeration.Role;
 import com.Application.Gestion.des.PFE.planning.Planning;
 import com.Application.Gestion.des.PFE.planning.PlanningNotFound;
 import com.Application.Gestion.des.PFE.planning.PlanningRepository;
@@ -22,13 +26,11 @@ import java.io.InputStream;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.Application.Gestion.des.PFE.algorithme.Algorithme.generer;
-import static com.Application.Gestion.des.PFE.algorithme.GeneticSchedulerRT.evoluer;
+
 
 @Service
 @AllArgsConstructor
@@ -47,6 +49,9 @@ public class PFEService {
         } else {
             return (year - 1) + "/" + year;
         }
+    }
+    public String formatDateTime(LocalDateTime dateTime) {
+        return dateTime.format(formatter);
     }
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
     private LocalDateTime parseAndValidateDate(String dateTimeStr) {
@@ -301,10 +306,79 @@ public class PFEService {
         }
         List<String> usernames = enseignantRepository.findAll()
                 .stream()
-                .map(Enseignant::getUsername)
+                .filter(enseignant -> !enseignant.getRole().equals(Role.ADMIN))  // Filter by "admin" role
+                .map(Enseignant::getUsername)  // Extract usernames of those who are admin
                 .collect(Collectors.toList());
 
-        evoluer(generer(pfes,usernames));
+        Optional<Planning> planning=planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
+        if (planning.isEmpty()){
+            throw new PlanningNotFound("Planning not found");
+        }
+        LocalDateTime start = planning.get().getDatedebut().atTime(8, 0); // Définit l'heure à 8h00
+        LocalDateTime end = planning.get().getDatefin().atTime(16, 0); // Définit l'heure à 16h00
+        List<Salle> salledisponibles=planning.get().getSalles();
+        List<String> salleNames;
+        if (salledisponibles != null && !salledisponibles.isEmpty()) {
+            salleNames = salledisponibles.stream()
+                    .map(Salle::getNom)
+                    .collect(Collectors.toList());
+        } else {
+            salledisponibles=salleRepository.findAll();
+            salleNames = salledisponibles.stream()
+                    .map(Salle::getNom)
+                    .collect(Collectors.toList());
+        }
+        Map<String, List<TimeSlot>> teacherUnavailability = new HashMap<>();
+        Map<String, List<TimeSlot>> roomUnavailability = new HashMap<>();
+        for (Enseignant enseignant : enseignantRepository.findAll()) {
+            String teacherName = enseignant.getUsername();
+            List<TimeSlot> timeSlots = new ArrayList<>();
+
+            List<LocalDateTime> disponibilite = enseignant.getDisponibilite();
+            for (LocalDateTime startTime : disponibilite) {
+                LocalDateTime endTime = startTime.plusHours(1);
+                timeSlots.add(new TimeSlot(startTime, endTime));
+            }
+
+            teacherUnavailability.put(teacherName, timeSlots);
+        }
+
+        for (Salle salle : salledisponibles) {
+            String roomName = salle.getNom();
+            List<TimeSlot> timeSlots = new ArrayList<>();
+
+
+            List<LocalDateTime> disponibilite = salle.getDisponibilite();
+            for (LocalDateTime startTime : disponibilite) {
+
+                LocalDateTime endTime = startTime.plusHours(1);
+                timeSlots.add(new TimeSlot(startTime, endTime));
+            }
+
+            roomUnavailability.put(roomName, timeSlots);
+        }
+
+        int populationSize = 150;
+        int generations = 300;
+        double crossoverRate = 0.85;
+        double mutationRate = 0.10;
+        int elitismCount = 3;
+        List< Pfe> p=new GeneticSchedulerRT(generer(pfes,usernames),salleNames,start,end,teacherUnavailability,roomUnavailability,populationSize,generations,crossoverRate,mutationRate,elitismCount).evoluer(generer(pfes,usernames),salleNames,teacherUnavailability,roomUnavailability,start,end);
+        System.out.println("omar");
+        p.forEach(pfe ->
+                pfeRepository.save(
+                        PFE.builder()
+                                .encadreur(enseignantRepository.findByEmail(pfe.getEncadrantId()))
+                                .president(enseignantRepository.findByEmail(pfe.getPresidentId()))
+                                .rapporteur(enseignantRepository.findByEmail(pfe.getRapporteurId()))
+                                .titrerapport(pfe.getTitre())
+                                .dateheure(pfe.getDateHeure())
+                                .etudiantemail(pfe.getEmailetudiant())
+                                .planningid(planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire()).get())
+                                .salle(salleRepository.findByNom(pfe.getSalle()).get())
+                                .build()
+                )
+        );
     }
 
     public LocalTime parseTime(String timeString) {
