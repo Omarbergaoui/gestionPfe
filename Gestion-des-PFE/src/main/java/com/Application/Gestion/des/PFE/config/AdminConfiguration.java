@@ -32,16 +32,17 @@ public class AdminConfiguration {
                 admin.setFirstname("admin");
                 admin.setLastname("admin");
                 admin.setPassword(passwordEncoder.encode("securepass"));
-                admin.setEmail("bragelil123@gmail.com");
+                admin.setEmail("admin@example.com");
                 admin.setRole(Role.ADMIN);
                 admin.setEnable(false);
                 admin.setActivationcode(Code);
                 admin.setAccountLocked(false);
-                emailService.sendActivationEmail("bragelil123@gmail.com",Code);
+                emailService.sendActivationEmail("admin@example.com",Code);
                 adminRepository.save(admin);
             } else {
                 System.out.println("✅ Un Admin existe déjà.");
             }
+
         };
     }
 }

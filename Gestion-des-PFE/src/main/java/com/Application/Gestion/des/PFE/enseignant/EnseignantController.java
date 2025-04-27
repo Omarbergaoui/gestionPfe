@@ -37,10 +37,17 @@ public class EnseignantController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<EnseignantDto> updateById(
+    public ResponseEntity<Object> updateById(
             @RequestBody EnseignantRequestUpdate update,
             @AuthenticationPrincipal UserEntity user) {
         return ResponseEntity.ok(enseignantService.UpdateEnseignantById(user, update));
+    }
+
+    @PutMapping("/update-by-admin")
+    public ResponseEntity<EnseignantDto> updateAdmin(
+            @RequestBody UpdateEnsAdmin update,
+            @AuthenticationPrincipal UserEntity user) {
+        return ResponseEntity.ok(enseignantService.UpdateEnseignantAdmin(user, update));
     }
 
     @DeleteMapping("/delete/by-id")

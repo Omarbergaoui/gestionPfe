@@ -38,7 +38,7 @@ public class SecurityConfiguration {
                         req.requestMatchers("/Authentication/Login","/Authentication/SendMail","/Authentication/Verify/**","/Authentication/Change-Password/**","/Authentication/activate")
                                 .permitAll()
                                 .requestMatchers("/Admin/**","/Salles/**","/Departements/**","/Enseignants/create","/Enseignants/all","/Enseignants/delete/by-id","/Enseignants/delete/by-email","/Enseignants/assign-department","/Enseignants/disponibles","/Enseignants/indisponibles").hasAnyRole("ADMIN")
-                                .requestMatchers("/Enseignants/update","/Enseignants/disponibilite/add","/Enseignants/disponibilite/delete").hasAnyRole("CHEFDEPARTEMENT","ENSEIGNANT")
+                                .requestMatchers("/Enseignants/disponibilite/add","/Enseignants/disponibilite/delete").hasAnyRole("CHEFDEPARTEMENT","ENSEIGNANT")
                                 .anyRequest()
                                 .authenticated()
                 )
