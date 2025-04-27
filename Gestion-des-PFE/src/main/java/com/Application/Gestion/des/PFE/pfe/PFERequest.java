@@ -8,7 +8,7 @@ public record PFERequest(
         String encadrant,
         String president,
         String rapporteur,
-        LocalDateTime dateTime,
+        String dateTime,
         String Salle
 ) {
 }

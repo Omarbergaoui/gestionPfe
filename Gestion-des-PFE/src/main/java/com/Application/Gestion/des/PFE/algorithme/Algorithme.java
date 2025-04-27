@@ -476,6 +476,7 @@ public class Algorithme {
     }
 
     public static class PFE {
+        private String emailetudiant;
         private String rapport;
         private String encadrant;
         private String rapporteur;
@@ -483,12 +484,14 @@ public class Algorithme {
         private String salle;
         private LocalDateTime dateHeure;
 
-        public PFE(String rapport,
+        public PFE(String emailetudiant,
+                   String rapport,
                    String encadrant,
                    String rapporteur,
                    String president,
                    String salle,
                    LocalDateTime dateHeure) {
+            this.emailetudiant=emailetudiant;
             this.rapport    = rapport;
             this.encadrant  = encadrant;
             this.rapporteur = rapporteur;
@@ -497,7 +500,7 @@ public class Algorithme {
             this.dateHeure  = dateHeure;
         }
 
-        // Getters
+        public String getEmailetudiant(){return emailetudiant;}
         public String getRapport()    { return rapport; }
         public String getEncadrant()  { return encadrant; }
         public String getRapporteur() { return rapporteur; }
@@ -537,6 +540,7 @@ public class Algorithme {
         @Override
         public String toString() {
             return "PFE{" +
+                    "emailetudiant='" +emailetudiant + '\'' +
                     "rapport='" + rapport + '\'' +
                     ", encadrant='" + encadrant + '\'' +
                     ", rapporteur='" + rapporteur + '\'' +

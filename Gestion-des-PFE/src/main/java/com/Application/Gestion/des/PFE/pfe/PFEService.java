@@ -1,6 +1,7 @@
 package com.Application.Gestion.des.PFE.pfe;
 import com.Application.Gestion.des.PFE.algorithme.Algorithme;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
+import com.Application.Gestion.des.PFE.disponibilte.InvalidDateFormatException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantNotFoundException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantRepository;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
@@ -47,6 +48,15 @@ public class PFEService {
             return (year - 1) + "/" + year;
         }
     }
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
+    private LocalDateTime parseAndValidateDate(String dateTimeStr) {
+        try {
+            LocalDateTime dateTime = LocalDateTime.parse(dateTimeStr, formatter);
+            return dateTime;
+        } catch (DateTimeParseException e) {
+            throw new InvalidDateFormatException("Invalid date format. Use yyyy/MM/dd HH:mm");
+        }
+    }
     public void validatePfeDateTime(LocalDateTime dateTime) {
         if (dateTime.getMinute() != 0) {
             throw new InvalidDateException("Minutes must be 00");
@@ -62,28 +72,34 @@ public class PFEService {
     }
 
     public PFE createPfe(PFERequest pfeRequest) {
-        validatePfeDateTime(pfeRequest.dateTime());
+        LocalDateTime dateTime=parseAndValidateDate(pfeRequest.dateTime());
+        validatePfeDateTime(dateTime);
         Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
         if (planningOpt.isEmpty()) {
             throw new PlanningNotFound("Planning not found");
         }
         Planning planning = planningOpt.get();
 
-        if (pfeRequest.dateTime().toLocalDate().isAfter(planning.getDatefin()) ||
-                pfeRequest.dateTime().toLocalDate().isBefore(planning.getDatedebut())) {
+        if (dateTime.toLocalDate().isAfter(planning.getDatefin()) ||
+                dateTime.toLocalDate().isBefore(planning.getDatedebut())) {
             throw new InvalidDateException("Invalid date for the PFE");
         }
 
-        Enseignant encadrant = enseignantRepository.findById(pfeRequest.encadrant())
-                .orElseThrow(() -> new EnseignantNotFoundException("Encadrant not found"));
+        Enseignant encadrant = enseignantRepository.findByEmail(pfeRequest.encadrant());
+        if (encadrant == null) {
+            throw new EnseignantNotFoundException("Encadrant not found");
+        }
 
-        Enseignant president = enseignantRepository.findById(pfeRequest.president())
-                .orElseThrow(() -> new EnseignantNotFoundException("President not found"));
+        Enseignant president = enseignantRepository.findByEmail(pfeRequest.president());
+        if (president == null) {
+            throw new EnseignantNotFoundException("President not found");
+        }
 
-        Enseignant rapporteur = enseignantRepository.findById(pfeRequest.rapporteur())
-                .orElseThrow(() -> new EnseignantNotFoundException("Rapporteur not found"));
+        Enseignant rapporteur = enseignantRepository.findByEmail(pfeRequest.rapporteur());
+        if (rapporteur == null) {
+            throw new EnseignantNotFoundException("Rapporteur not found");
+        }
 
-        LocalDateTime dateTime = pfeRequest.dateTime();
         if (encadrant.getDisponibilite().contains(dateTime)) {
             throw new InvalidDateException("Encadrant unavailable at that date");
         }
@@ -128,71 +144,80 @@ public class PFEService {
         return pfeRepository.save(pfe);
     }
 
-    public PFE updatePfe(PFERequest pfeRequest) {
-        validatePfeDateTime(pfeRequest.dateTime());
-        Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
-        if (planningOpt.isEmpty()) {
-            throw new PlanningNotFound("Planning not found");
-        }
-        Planning planning = planningOpt.get();
-        if (pfeRequest.dateTime().toLocalDate().isAfter(planning.getDatefin()) ||
-                pfeRequest.dateTime().toLocalDate().isBefore(planning.getDatedebut())) {
-            throw new InvalidDateException("Invalid date for the PFE");
-        }
+//    public PFE updatePfe(PfeRequestId pfeRequestId, PFERequest pfeRequest) {
+//        PFE pfe = getPfe(pfeRequestId);
+//
+//        Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
+//        if (planningOpt.isEmpty()) {
+//            throw new PlanningNotFound("Planning not found");
+//        }
+//        Planning planning = planningOpt.get();
+//
+//        LocalDateTime dateTime = pfeRequest.dateTime();
+//        if (dateTime != null) {
+//            validatePfeDateTime(dateTime);
+//
+//            if (dateTime.toLocalDate().isAfter(planning.getDatefin()) || dateTime.toLocalDate().isBefore(planning.getDatedebut())) {
+//                throw new InvalidDateException("Invalid date for the PFE");
+//            }
+//
+//            Enseignant encadrant = enseignantRepository.findById(pfe.getEncadreur().getEmail())
+//                    .orElseThrow(() -> new EnseignantNotFoundException("Encadrant not found"));
+//
+//            if (encadrant.getDisponibilite().contains(dateTime)) {
+//                throw new InvalidDateException("Encadrant unavailable at that date");
+//            }
+//            if (pfe.getPresident() != null && pfe.getPresident().getDisponibilite().contains(dateTime)) {
+//                throw new InvalidDateException("President unavailable at that date");
+//            }
+//            if (pfe.getRapporteur() != null && pfe.getRapporteur().getDisponibilite().contains(dateTime)) {
+//                throw new InvalidDateException("Rapporteur unavailable at that date");
+//            }
+//            if (pfe.getSalle() != null && pfe.getSalle().getDisponibilite().contains(dateTime)) {
+//                throw new InvalidDateException("Salle unavailable at that date");
+//            }
+//
+//            pfe.setDateheure(dateTime);
+//        }
+//
+//        if (pfeRequest.president() != null) {
+//            Enseignant president = enseignantRepository.findById(pfeRequest.president())
+//                    .orElseThrow(() -> new EnseignantNotFoundException("President not found"));
+//
+//            if (pfe.getEncadreur().equals(president) || (pfe.getRapporteur() != null && pfe.getRapporteur().equals(president))) {
+//                throw new IllegalArgumentException("President must be different from Encadrant and Rapporteur");
+//            }
+//
+//            pfe.setPresident(president);
+//        }
+//
+//        if (pfeRequest.rapporteur() != null) {
+//            Enseignant rapporteur = enseignantRepository.findById(pfeRequest.rapporteur())
+//                    .orElseThrow(() -> new EnseignantNotFoundException("Rapporteur not found"));
+//
+//            if (pfe.getEncadreur().equals(rapporteur) || (pfe.getPresident() != null && pfe.getPresident().equals(rapporteur))) {
+//                throw new IllegalArgumentException("Rapporteur must be different from Encadrant and President");
+//            }
+//
+//            pfe.setRapporteur(rapporteur);
+//        }
+//
+//        if (pfeRequest.Salle() != null) {
+//            Salle salle = salleRepository.findById(pfeRequest.Salle())
+//                    .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
+//
+//            pfe.setSalle(salle);
+//        }
+//
+//
+//
+//        if (pfeRequest.nomderapport() != null) {
+//            pfe.setTitrerapport(pfeRequest.nomderapport());
+//        }
+//
+//        return pfeRepository.save(pfe);
+//    }
 
-        Enseignant encadrant = enseignantRepository.findById(pfeRequest.encadrant())
-                .orElseThrow(() -> new EnseignantNotFoundException("Encadrant not found"));
-
-        Enseignant president = enseignantRepository.findById(pfeRequest.president())
-                .orElseThrow(() -> new EnseignantNotFoundException("President not found"));
-
-        Enseignant rapporteur = enseignantRepository.findById(pfeRequest.rapporteur())
-                .orElseThrow(() -> new EnseignantNotFoundException("Rapporteur not found"));
-
-        LocalDateTime dateTime = pfeRequest.dateTime();
-        if (encadrant.getDisponibilite().contains(dateTime)) {
-            throw new InvalidDateException("Encadrant unavailable at that date");
-        }
-        if (president.getDisponibilite().contains(dateTime)) {
-            throw new InvalidDateException("President unavailable at that date");
-        }
-        if (rapporteur.getDisponibilite().contains(dateTime)) {
-            throw new InvalidDateException("Rapporteur unavailable at that date");
-        }
-
-        if (encadrant.equals(president) || encadrant.equals(rapporteur) || president.equals(rapporteur)) {
-            throw new IllegalArgumentException("Encadrant, President, and Rapporteur must be different");
-        }
-
-        Salle salle = salleRepository.findById(pfeRequest.Salle())
-                .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
-
-        if (salle.getDisponibilite().contains(dateTime)) {
-            throw new InvalidDateException("Salle is unavailable at that date");
-        }
-        if (pfeRepository.findByPlanningidAndEtudiantemail(planning.getId(), pfeRequest.emailetudiant()).isPresent()) {
-            throw new PfeFoundException("A PFE already exists for this student in the selected planning");
-        }
-
-        encadrant.getDisponibilite().add(dateTime);
-        rapporteur.getDisponibilite().add(dateTime);
-        president.getDisponibilite().add(dateTime);
-        salle.getDisponibilite().add(dateTime);
-        enseignantRepository.save(encadrant);
-        enseignantRepository.save(rapporteur);
-        enseignantRepository.save(president);
-        salleRepository.save(salle);
-        PFE pfe = new PFE();
-        pfe.setPlanningid(planning);
-        pfe.setDateheure(dateTime);
-        pfe.setEncadreur(encadrant);
-        pfe.setPresident(president);
-        pfe.setRapporteur(rapporteur);
-        pfe.setSalle(salle);
-        pfe.setTitrerapport(pfeRequest.nomderapport());
-        pfe.setEtudiantemail(pfe.getEtudiantemail());
-        return pfeRepository.save(pfe);
-    }
 
     public PFE getPfe(PfeRequestId pfeRequestId){
         if(pfeRepository.findById(pfeRequestId.Id()).isEmpty()){
@@ -223,7 +248,7 @@ public class PFEService {
         enseignantRepository.save(president);
         enseignantRepository.save(rapporteur);
         salleRepository.save(salle);
-        return "Pfe Deleted succefully";
+        return "Pfe Deleted successfully";
     }
 
 
@@ -248,30 +273,29 @@ public class PFEService {
                     isFirstRow = false;
                     continue;
                 }
-                String studentName = getStringCellValue(row.getCell(0));
-                String studentEmail = getStringCellValue(row.getCell(1));
-                String title = getStringCellValue(row.getCell(2));
+                String studentEmail = getStringCellValue(row.getCell(0));
+                String title = getStringCellValue(row.getCell(1));
                 if(title==null){
                     continue;
                 }
-                String supervisor = getStringCellValue(row.getCell(3));
+                String supervisor = getStringCellValue(row.getCell(2));
                 if(enseignantRepository.findByEmail(supervisor)==null){
                     supervisor = null;
                 }
-                String president = getStringCellValue(row.getCell(4));
+                String president = getStringCellValue(row.getCell(3));
                 if(enseignantRepository.findByEmail(president)==null){
                     president = null;
                 }
-                String reporter = getStringCellValue(row.getCell(5));
+                String reporter = getStringCellValue(row.getCell(4));
                 if(enseignantRepository.findByEmail(reporter)==null){
                     reporter = null;
                 }
-                String room = getStringCellValue(row.getCell(8));
-                LocalDate date=parseDate(getStringCellValue(row.getCell(6)));
-                LocalTime time=parseTime(getStringCellValue(row.getCell(7)));
+                String room = getStringCellValue(row.getCell(7));
+                LocalDate date=parseDate(getStringCellValue(row.getCell(5)));
+                LocalTime time=parseTime(getStringCellValue(row.getCell(6)));
                 LocalDateTime dateTime=combineDateAndTime(date,time);
 
-                Algorithme.PFE pfe=new Algorithme.PFE(title,supervisor,reporter,president,room,dateTime);
+                Algorithme.PFE pfe=new Algorithme.PFE(studentEmail,title,supervisor,reporter,president,room,dateTime);
                 pfes.add(pfe);
             }
         }
