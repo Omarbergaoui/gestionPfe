@@ -1,11 +1,6 @@
 package com.Application.Gestion.des.PFE.Authentication;
-
-import com.Application.Gestion.des.PFE.Dtos.ChefEnseignantDto;
 import com.Application.Gestion.des.PFE.Dtos.UserDto;
-import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
 import com.Application.Gestion.des.PFE.email.EmailService;
-import com.Application.Gestion.des.PFE.enseignant.Enseignant;
-import com.Application.Gestion.des.PFE.enumeration.Role;
 import com.Application.Gestion.des.PFE.token.Token;
 import com.Application.Gestion.des.PFE.token.TokenRepository;
 import com.Application.Gestion.des.PFE.user.UserEntity;
@@ -16,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 

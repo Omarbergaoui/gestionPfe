@@ -27,6 +27,8 @@ public class PlanningService {
     private final PfeRepository pfeRepository;
     private final SalleRepository salleRepository;
     private final EnseignantRepository enseignantRepository;
+
+
     private String getAnneeUniversitaire() {
         LocalDate date=LocalDate.now();
         int year = date.getYear();
@@ -67,7 +69,7 @@ public class PlanningService {
     }
 
 
-    public Planning createPlanning(PlanningRequest Request){
+    public String createPlanning(PlanningRequest Request){
         String anneeuniversitaire = getAnneeUniversitaire();
         if(planningRepository.findByAnneeuniversitaire(anneeuniversitaire).isEmpty()){
             throw new PlanningFound("Planning Found");
@@ -77,12 +79,14 @@ public class PlanningService {
         if (foundSalles.size() != Request.salleids().size()) {
             throw new SalleNotFoundException("One or more salle IDs are invalid.");
         }
-        return Planning.builder()
+        Planning planning= Planning.builder()
                 .salles(foundSalles)
                 .datedebut(Request.dateDebut())
                 .datefin(Request.dateFin())
                 .anneeuniversitaire(anneeuniversitaire)
                 .build();
+        planningRepository.save(planning);
+        return "Planning created successfully";
     }
 
     public Planning GetPlanningById(PlanningIdRequest planningIdRequest){
@@ -141,7 +145,7 @@ public class PlanningService {
         }
     }
 
-    public String deletePlanningByAnneeUniversitaire(PlanningAnneeUniversitaireRequest planningAnneeUniversitaireRequest){
+    /*public String deletePlanningByAnneeUniversitaire(PlanningAnneeUniversitaireRequest planningAnneeUniversitaireRequest){
         validateAnneeUniversitaireFormat(planningAnneeUniversitaireRequest.anneeuniversitaire());
         Planning planning = GetPlanningByAnneeUniversitaire(planningAnneeUniversitaireRequest);
         if(!pfeRepository.findByPlanningid(planning.getId()).isEmpty() && pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning.getId()).getDateheure().isBefore(LocalDateTime.now())){
@@ -153,7 +157,7 @@ public class PlanningService {
             planningRepository.delete(planning);
             return "Planning deleted successfully";
         }
-    }
+    }*/
 
     public Planning AjouterSalles(SallesRequest sallesRequest,PlanningIdRequest planningIdRequest){
         Planning planning = GetPlanningById(planningIdRequest);

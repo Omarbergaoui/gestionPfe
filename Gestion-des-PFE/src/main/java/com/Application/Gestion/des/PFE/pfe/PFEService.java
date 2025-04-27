@@ -1,34 +1,33 @@
 package com.Application.Gestion.des.PFE.pfe;
-
-
+import com.Application.Gestion.des.PFE.algorithme.Algorithme;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantNotFoundException;
 import com.Application.Gestion.des.PFE.enseignant.EnseignantRepository;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
 import com.Application.Gestion.des.PFE.planning.Planning;
-import com.Application.Gestion.des.PFE.planning.PlanningFound;
 import com.Application.Gestion.des.PFE.planning.PlanningNotFound;
 import com.Application.Gestion.des.PFE.planning.PlanningRepository;
 import com.Application.Gestion.des.PFE.salle.Salle;
 import com.Application.Gestion.des.PFE.salle.SalleNotFoundException;
 import com.Application.Gestion.des.PFE.salle.SalleRepository;
 import lombok.AllArgsConstructor;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Month;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static com.Application.Gestion.des.PFE.algorithme.Algorithme.generer;
+import static com.Application.Gestion.des.PFE.algorithme.GeneticSchedulerRT.evoluer;
 
 @Service
 @AllArgsConstructor
@@ -170,30 +169,94 @@ public class PFEService {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty.");
         }
-
         if (!file.getOriginalFilename().endsWith(".xlsx")) {
             throw new IllegalArgumentException("Only .xlsx files are supported.");
         }
 
-        try (InputStream inputStream = file.getInputStream()) {
-            Workbook workbook = new XSSFWorkbook(inputStream);
+        List<Algorithme.PFE> pfes = new ArrayList<>();
+
+        try (InputStream inputStream = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(inputStream)) {
+
             Sheet sheet = workbook.getSheetAt(0);
+            boolean isFirstRow = true;
 
             for (Row row : sheet) {
-                StringBuilder rowContent = new StringBuilder("Row: ");
-                for (int i = 0; i < 9; i++) {
-                    Cell cell = row.getCell(i);
-                    String value = cell != null ? cell.toString() : "";
-                    rowContent.append(value);
-                    if (i < 8) {
-                        rowContent.append(" | ");
-                    }
+                if (isFirstRow) {
+                    isFirstRow = false;
+                    continue;
                 }
-                System.out.println(rowContent);
-            }
+                String studentName = getStringCellValue(row.getCell(0));
+                String studentEmail = getStringCellValue(row.getCell(1));
+                String title = getStringCellValue(row.getCell(2));
+                if(title==null){
+                    continue;
+                }
+                String supervisor = getStringCellValue(row.getCell(3));
+                if(enseignantRepository.findByEmail(supervisor)==null){
+                    supervisor = null;
+                }
+                String president = getStringCellValue(row.getCell(4));
+                if(enseignantRepository.findByEmail(president)==null){
+                    president = null;
+                }
+                String reporter = getStringCellValue(row.getCell(5));
+                if(enseignantRepository.findByEmail(reporter)==null){
+                    reporter = null;
+                }
+                String room = getStringCellValue(row.getCell(8));
+                LocalDate date=parseDate(getStringCellValue(row.getCell(6)));
+                LocalTime time=parseTime(getStringCellValue(row.getCell(7)));
+                LocalDateTime dateTime=combineDateAndTime(date,time);
 
-            workbook.close();
+                Algorithme.PFE pfe=new Algorithme.PFE(title,supervisor,reporter,president,room,dateTime);
+                pfes.add(pfe);
+            }
+        }
+        List<String> usernames = enseignantRepository.findAll()
+                .stream()
+                .map(Enseignant::getUsername)
+                .collect(Collectors.toList());
+
+        evoluer(generer(pfes,usernames));
+    }
+
+    public LocalTime parseTime(String timeString) {
+        DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm");
+
+        try {
+            return LocalTime.parse(timeString, timeFormat);
+        } catch (DateTimeParseException e) {
+            return null;
         }
     }
+    public LocalDateTime combineDateAndTime(LocalDate date, LocalTime time) {
+        if (date != null && time != null) {
+            return date.atTime(time);
+        }
+        return null;
+    }
+
+    private String getStringCellValue(Cell cell) {
+        if (cell == null) return null;
+        if (cell.getCellType() == CellType.STRING) {
+            return cell.getStringCellValue().trim();
+        } else if (cell.getCellType() == CellType.NUMERIC) {
+            return String.valueOf((int) cell.getNumericCellValue());
+        } else {
+            return cell.toString().trim();
+        }
+    }
+    public LocalDate parseDate(String dateString) {
+        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        try {
+            return LocalDate.parse(dateString, dateFormat);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+
 
 }
