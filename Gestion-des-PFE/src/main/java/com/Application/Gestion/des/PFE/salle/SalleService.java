@@ -1,4 +1,5 @@
 package com.Application.Gestion.des.PFE.salle;
+
 import com.Application.Gestion.des.PFE.disponibilte.AvailableDateException;
 import com.Application.Gestion.des.PFE.disponibilte.DisponibilityNotFoundException;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
@@ -52,17 +53,33 @@ public class SalleService {
 
 
     public Salle getSalleById(SalleRequest request) {
-        return salleRepository.findById(request.id())
+        LocalDateTime now = LocalDateTime.now();
+        Salle salle = salleRepository.findById(request.id())
                 .orElseThrow(() -> new SalleNotFoundException("Room not found with id: " + request.id()));
+        if (salle.getDisponibilite() != null) {
+            List<LocalDateTime> disposFutures = salle.getDisponibilite().stream()
+                    .filter(d -> d.isAfter(now))
+                    .collect(Collectors.toList());
+            salle.setDisponibilite(disposFutures);
+        }
+        return salle;
     }
 
     public Salle getSalleByNom(SalleReq req) {
-        return salleRepository.findByNom(req.Name())
+        LocalDateTime now = LocalDateTime.now();
+        Salle salle = salleRepository.findByNom(req.Name())
                 .orElseThrow(() -> new SalleNotFoundException("Room not found with name: " + req.Name()));
+        if (salle.getDisponibilite() != null) {
+            List<LocalDateTime> disposFutures = salle.getDisponibilite().stream()
+                    .filter(d -> d.isAfter(now))
+                    .collect(Collectors.toList());
+            salle.setDisponibilite(disposFutures);
+        }
+        return salle;
     }
 
 
-    public List<Salle> getAllSalle(){
+    public List<Salle> getAllSalle() {
         LocalDateTime now = LocalDateTime.now();
         List<Salle> salles = salleRepository.findAll();
 

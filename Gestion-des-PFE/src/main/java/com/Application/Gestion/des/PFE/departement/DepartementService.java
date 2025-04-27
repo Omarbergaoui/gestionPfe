@@ -73,7 +73,7 @@ public class DepartementService {
             throw new EnseignantNotFoundException("User not found");
         }
         Enseignant nouveauenseignant = enseignantRepository.findById(requestIdChef.id()).get();
-        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT) || !nouveauenseignant.getDepartementId().equals(departement)){
+        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT) || !nouveauenseignant.getDepartementId().getId().equals(departement.getId())){
             throw new EnseignantNotFoundException("User not found");
         }
         if(enseignantRepository.findById(departement.getChefdepartement().getId()).isEmpty()){
@@ -97,7 +97,7 @@ public class DepartementService {
             throw new EnseignantNotFoundException("User not found");
         }
         Enseignant nouveauenseignant = enseignantRepository.findById(requestIdChef.id()).get();
-        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT) || !nouveauenseignant.getDepartementId().equals(departement)){
+        if(nouveauenseignant.getRole().equals(Role.ADMIN) || nouveauenseignant.getRole().equals(Role.CHEFDEPARTEMENT) || !nouveauenseignant.getDepartementId().getId().equals(departement.getId())){
             throw new EnseignantNotFoundException("User not found");
         }
         departement.setChefdepartement(nouveauenseignant);

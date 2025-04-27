@@ -5,6 +5,7 @@ import com.Application.Gestion.des.PFE.Dtos.UserDto;
 import com.Application.Gestion.des.PFE.Dtos.EnseignantDto;
 import com.Application.Gestion.des.PFE.email.EmailService;
 import com.Application.Gestion.des.PFE.enseignant.Enseignant;
+import com.Application.Gestion.des.PFE.enseignant.EnseignantRepository;
 import com.Application.Gestion.des.PFE.enumeration.Role;
 import com.Application.Gestion.des.PFE.token.Token;
 import com.Application.Gestion.des.PFE.token.TokenRepository;
@@ -33,6 +34,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final TokenRepository tokenRepository;
     private final EmailService emailService;
+    private final EnseignantRepository enseignantRepository;
 
     public Authresponse authenticate(Authrequest request, HttpServletResponse response) {
         var user = userRepository.findByEmail(request.email()).orElseThrow(() -> new UserNotFoundException("User not found with email: " + request.email()));
@@ -233,13 +235,25 @@ public class AuthenticationService {
         if (user == null) {
             throw new UserNotFoundException("User not found");
         }
-        return UserDto.builder()
-                .id(user.getId())
-                .firstName(user.getFirstname())
-                .lastName(user.getLastname())
-                .role(user.getRole())
-                .email(user.getEmail())
+        if (user.getRole().equals(Role.ADMIN.name())) {
+            return UserDto.builder()
+                    .id(user.getId())
+                    .firstName(user.getFirstname())
+                    .lastName(user.getLastname())
+                    .role(user.getRole())
+                    .email(user.getEmail())
+                    .build();
+        }
+        Enseignant ens = enseignantRepository.findById(user.getId()).get();
+        return EnseignantDto.builder()
+                .id(ens.getId())
+                .firstName(ens.getFirstname())
+                .lastName(ens.getLastname())
+                .role(ens.getRole())
+                .email(ens.getEmail())
+                .matiere(ens.getMatiere())
                 .build();
+
     }
 
 }
