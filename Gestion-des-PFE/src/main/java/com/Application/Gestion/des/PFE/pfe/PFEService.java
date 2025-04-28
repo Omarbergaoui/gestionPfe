@@ -152,79 +152,78 @@ public class PFEService {
         return pfeRepository.save(pfe);
     }
 
-//    public PFE updatePfe(PfeRequestId pfeRequestId, PFERequest pfeRequest) {
-//        PFE pfe = getPfe(pfeRequestId);
-//
-//        Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
-//        if (planningOpt.isEmpty()) {
-//            throw new PlanningNotFound("Planning not found");
-//        }
-//        Planning planning = planningOpt.get();
-//
-//        LocalDateTime dateTime = pfeRequest.dateTime();
-//        if (dateTime != null) {
-//            validatePfeDateTime(dateTime);
-//
-//            if (dateTime.toLocalDate().isAfter(planning.getDatefin()) || dateTime.toLocalDate().isBefore(planning.getDatedebut())) {
-//                throw new InvalidDateException("Invalid date for the PFE");
-//            }
-//
-//            Enseignant encadrant = enseignantRepository.findById(pfe.getEncadreur().getEmail())
-//                    .orElseThrow(() -> new EnseignantNotFoundException("Encadrant not found"));
-//
-//            if (encadrant.getDisponibilite().contains(dateTime)) {
-//                throw new InvalidDateException("Encadrant unavailable at that date");
-//            }
-//            if (pfe.getPresident() != null && pfe.getPresident().getDisponibilite().contains(dateTime)) {
-//                throw new InvalidDateException("President unavailable at that date");
-//            }
-//            if (pfe.getRapporteur() != null && pfe.getRapporteur().getDisponibilite().contains(dateTime)) {
-//                throw new InvalidDateException("Rapporteur unavailable at that date");
-//            }
-//            if (pfe.getSalle() != null && pfe.getSalle().getDisponibilite().contains(dateTime)) {
-//                throw new InvalidDateException("Salle unavailable at that date");
-//            }
-//
-//            pfe.setDateheure(dateTime);
-//        }
-//
-//        if (pfeRequest.president() != null) {
-//            Enseignant president = enseignantRepository.findById(pfeRequest.president())
-//                    .orElseThrow(() -> new EnseignantNotFoundException("President not found"));
-//
-//            if (pfe.getEncadreur().equals(president) || (pfe.getRapporteur() != null && pfe.getRapporteur().equals(president))) {
-//                throw new IllegalArgumentException("President must be different from Encadrant and Rapporteur");
-//            }
-//
-//            pfe.setPresident(president);
-//        }
-//
-//        if (pfeRequest.rapporteur() != null) {
-//            Enseignant rapporteur = enseignantRepository.findById(pfeRequest.rapporteur())
-//                    .orElseThrow(() -> new EnseignantNotFoundException("Rapporteur not found"));
-//
-//            if (pfe.getEncadreur().equals(rapporteur) || (pfe.getPresident() != null && pfe.getPresident().equals(rapporteur))) {
-//                throw new IllegalArgumentException("Rapporteur must be different from Encadrant and President");
-//            }
-//
-//            pfe.setRapporteur(rapporteur);
-//        }
-//
-//        if (pfeRequest.Salle() != null) {
-//            Salle salle = salleRepository.findById(pfeRequest.Salle())
-//                    .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
-//
-//            pfe.setSalle(salle);
-//        }
-//
-//
-//
-//        if (pfeRequest.nomderapport() != null) {
-//            pfe.setTitrerapport(pfeRequest.nomderapport());
-//        }
-//
-//        return pfeRepository.save(pfe);
-//    }
+    public String updatePfe(PfeUpdateRequest pfeUpdateRequest) {
+        PFE pfe = getPfe(new PfeRequestId(pfeUpdateRequest.id()));
+
+        Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
+        if (planningOpt.isEmpty()) {
+            throw new PlanningNotFound("Planning not found");
+        }
+        Planning planning = planningOpt.get();
+        if (pfeUpdateRequest.president() != null) {
+            Enseignant president = enseignantRepository.findById(pfeUpdateRequest.president())
+                    .orElseThrow(() -> new EnseignantNotFoundException("President not found"));
+
+            if (pfe.getEncadreur().equals(president) || (pfe.getRapporteur() != null && pfe.getRapporteur().equals(president))) {
+                throw new IllegalArgumentException("President must be different from Encadrant and Rapporteur");
+            }
+
+            pfe.setPresident(president);
+        }
+        if (pfeUpdateRequest.rapporteur() != null) {
+            Enseignant rapporteur = enseignantRepository.findById(pfeUpdateRequest.rapporteur())
+                    .orElseThrow(() -> new EnseignantNotFoundException("Rapporteur not found"));
+
+            if (pfe.getEncadreur().equals(rapporteur) || (pfe.getPresident() != null && pfe.getPresident().equals(rapporteur))) {
+                throw new IllegalArgumentException("Rapporteur must be different from Encadrant and President");
+            }
+
+            pfe.setRapporteur(rapporteur);
+        }
+
+        if (pfeUpdateRequest.salle()!= null) {
+            Salle salle = salleRepository.findById(pfeUpdateRequest.salle())
+                    .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
+
+            pfe.setSalle(salle);
+        }
+
+
+
+        if (pfeUpdateRequest.nomderapport() != null && !pfeUpdateRequest.nomderapport().isEmpty()) {
+            pfe.setTitrerapport(pfeUpdateRequest.nomderapport());
+        }
+
+
+        if (pfeUpdateRequest.dateTime()!=null) {
+            LocalDateTime dateTime = parseAndValidateDate(pfeUpdateRequest.dateTime());
+            validatePfeDateTime(dateTime);
+
+            if (dateTime.toLocalDate().isAfter(planning.getDatefin()) || dateTime.toLocalDate().isBefore(planning.getDatedebut())) {
+                throw new InvalidDateException("Invalid date for the PFE");
+            }
+
+            Enseignant encadrant = enseignantRepository.findById(pfe.getEncadreur().getEmail())
+                    .orElseThrow(() -> new EnseignantNotFoundException("Encadrant not found"));
+
+            if (encadrant.getDisponibilite().contains(dateTime)) {
+                throw new InvalidDateException("Encadrant unavailable at that date");
+            }
+            if (pfe.getPresident() != null && pfe.getPresident().getDisponibilite().contains(dateTime)) {
+                throw new InvalidDateException("President unavailable at that date");
+            }
+            if (pfe.getRapporteur() != null && pfe.getRapporteur().getDisponibilite().contains(dateTime)) {
+                throw new InvalidDateException("Rapporteur unavailable at that date");
+            }
+            if (pfe.getSalle() != null && pfe.getSalle().getDisponibilite().contains(dateTime)) {
+                throw new InvalidDateException("Salle unavailable at that date");
+            }
+
+            pfe.setDateheure(dateTime);
+        }
+        pfeRepository.save(pfe);
+        return "PFE Updated successfully";
+    }
 
 
     public PFE getPfe(PfeRequestId pfeRequestId){

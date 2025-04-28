@@ -64,6 +64,10 @@ public class PFEcontroller {
 //        }
 //    }
 
+    @PutMapping("/update")
+    public ResponseEntity<String> UpdatePfe(@RequestBody PfeUpdateRequest pfeUpdateRequest){
+        return ResponseEntity.ok(pfeService.updatePfe(pfeUpdateRequest));
+    }
 
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deletePfe(@PathVariable("id") PfeRequestId pfeRequestId) {
