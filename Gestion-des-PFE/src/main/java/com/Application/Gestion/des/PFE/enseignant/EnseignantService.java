@@ -10,6 +10,8 @@ import com.Application.Gestion.des.PFE.disponibilte.InvalidDateException;
 import com.Application.Gestion.des.PFE.disponibilte.InvalidDateFormatException;
 import com.Application.Gestion.des.PFE.email.EmailService;
 import com.Application.Gestion.des.PFE.enumeration.Role;
+import com.Application.Gestion.des.PFE.pfe.PFE;
+import com.Application.Gestion.des.PFE.pfe.PfeRepository;
 import com.Application.Gestion.des.PFE.token.TokenRepository;
 import com.Application.Gestion.des.PFE.departement.Departement;
 import com.Application.Gestion.des.PFE.departement.DepartementRepository;
@@ -41,6 +43,7 @@ public class EnseignantService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final PfeRepository pfeRepository;
 
     private String generateRandomCode() {
         return UUID.randomUUID().toString().replace("-", "");
@@ -165,6 +168,56 @@ public class EnseignantService {
                     )
                     .build();
         }
+    }
+
+    public EnseignantDto getEnseignantByIdWithoutPfe(EnseignantRequestId enseignantRequestId) {
+        // 1. Fetch the teacher, handle not found or admin cases
+        Optional<Enseignant> enseignantOpt = enseignantRepository.findById(enseignantRequestId.id());
+        if (enseignantOpt.isEmpty()) {
+            throw new EnseignantNotFoundException("Teacher not found with ID: " + enseignantRequestId.id());
+        }
+
+        Enseignant enseignant = enseignantOpt.get();
+
+        if (Role.ADMIN.equals(enseignant.getRole())) {
+            // Avoid exposing ADMIN details or applying teacher-specific logic
+            throw new EnseignantNotFoundException("Cannot fetch ADMIN details using this teacher-specific method.");
+        }
+
+        // 2. Find all PFEs where this teacher participates (encadreur, president, or rapporteur)
+        // Assuming your repository method handles searching across relevant fields.
+        // If not, you might need: List<PFE> associatedPfes = pfeRepository.findByEncadreurOrPresidentOrRapporteur(enseignant);
+        List<PFE> associatedPfes = pfeRepository.findAllByEnseignantParticipation(enseignant.getId());
+
+        // 3. Extract the distinct LocalDateTime schedules from these PFEs into a Set
+        Set<LocalDateTime> pfeDates = associatedPfes.stream()
+                .map(PFE::getDateheure)       // Get the LocalDateTime from each PFE
+                .filter(Objects::nonNull)     // Ensure the date is not null
+                .collect(Collectors.toSet()); // Collect unique dates into a Set for efficient lookup
+
+        // 4. Get the teacher's original availability, handling potential null list
+        List<LocalDateTime> originalAvailability = enseignant.getDisponibilite() != null
+                ? enseignant.getDisponibilite()
+                : new ArrayList<>();
+
+        // 5. Filter the original availability: keep future dates AND exclude dates matching PFE schedules
+        List<LocalDateTime> filteredAvailability = originalAvailability.stream()
+                .filter(dateTime -> dateTime.isAfter(LocalDateTime.now())) // Keep only future dates/times
+                .filter(dateTime -> !pfeDates.contains(dateTime))          // Exclude dates present in the pfeDates Set
+                .sorted() // Optional: Sort the resulting availability
+                .collect(Collectors.toList());
+
+        // 6. Build and return the DTO using the filtered availability list
+        return EnseignantDto.builder()
+                .id(enseignant.getId())
+                .firstName(enseignant.getFirstname())
+                .lastName(enseignant.getLastname())
+                .role(enseignant.getRole())
+                .email(enseignant.getEmail())
+                .matiere(enseignant.getMatiere())
+                .departementId(enseignant.getDepartementId()) // Ensure Departement entity serialization is handled
+                .disponibilite(filteredAvailability) // Use the filtered list
+                .build();
     }
 
     private Enseignant getEnseignantByIdprivate(EnseignantRequestId enseignantRequestId) {
@@ -317,7 +370,7 @@ public class EnseignantService {
         if (!isValidDateTime(startlocalDateTime) && !isValidDateTime(endlocalDateTime)) {
             throw new InvalidDateException("Date is invalid or in the past.");
         }
-        if(startlocalDateTime.isAfter(endlocalDateTime)){
+        if (startlocalDateTime.isAfter(endlocalDateTime)) {
             throw new InvalidDateException("Date is invalid");
         }
         if (user == null || user.getRole() == Role.ADMIN) {
@@ -364,7 +417,7 @@ public class EnseignantService {
         if (!isValidDateTime(startlocalDateTime) && !isValidDateTime(endlocalDateTime)) {
             throw new InvalidDateException("Date is invalid or in the past.");
         }
-        if(startlocalDateTime.isAfter(endlocalDateTime)){
+        if (startlocalDateTime.isAfter(endlocalDateTime)) {
             throw new InvalidDateException("Date is invalid");
         }
         if (user == null || user.getRole() == Role.ADMIN) {

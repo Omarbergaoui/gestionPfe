@@ -1,4 +1,5 @@
 package com.Application.Gestion.des.PFE.pfe;
+
 import com.Application.Gestion.des.PFE.Authentication.UserNotFoundException;
 import com.Application.Gestion.des.PFE.algorithme.Algorithme;
 import com.Application.Gestion.des.PFE.algorithme.GeneticSchedulerRT;
@@ -44,7 +45,7 @@ public class PFEService {
     private final EnseignantRepository enseignantRepository;
 
     private String getAnneeUniversitaire() {
-        LocalDate date=LocalDate.now();
+        LocalDate date = LocalDate.now();
         int year = date.getYear();
         Month month = date.getMonth();
         if (month.getValue() >= 9) {
@@ -53,10 +54,13 @@ public class PFEService {
             return (year - 1) + "/" + year;
         }
     }
+
     public String formatDateTime(LocalDateTime dateTime) {
         return dateTime.format(formatter);
     }
+
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
+
     private LocalDateTime parseAndValidateDate(String dateTimeStr) {
         try {
             LocalDateTime dateTime = LocalDateTime.parse(dateTimeStr, formatter);
@@ -65,6 +69,7 @@ public class PFEService {
             throw new InvalidDateFormatException("Invalid date format. Use yyyy/MM/dd HH:mm");
         }
     }
+
     public void validatePfeDateTime(LocalDateTime dateTime) {
         if (dateTime.getMinute() != 0) {
             throw new InvalidDateException("Minutes must be 00");
@@ -80,7 +85,7 @@ public class PFEService {
     }
 
     public PFE createPfe(PFERequest pfeRequest) {
-        LocalDateTime dateTime=parseAndValidateDate(pfeRequest.dateTime());
+        LocalDateTime dateTime = parseAndValidateDate(pfeRequest.dateTime());
         validatePfeDateTime(dateTime);
         Optional<Planning> planningOpt = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
         if (planningOpt.isEmpty()) {
@@ -148,7 +153,7 @@ public class PFEService {
         pfe.setRapporteur(rapporteur);
         pfe.setSalle(salle);
         pfe.setTitrerapport(pfeRequest.nomderapport());
-        pfe.setEtudiantemail(pfe.getEtudiantemail());
+        pfe.setEtudiantemail(pfeRequest.emailetudiant());
         return pfeRepository.save(pfe);
     }
 
@@ -181,7 +186,7 @@ public class PFEService {
             pfe.setRapporteur(rapporteur);
         }
 
-        if (pfeUpdateRequest.salle()!= null) {
+        if (pfeUpdateRequest.salle() != null) {
             Salle salle = salleRepository.findById(pfeUpdateRequest.salle())
                     .orElseThrow(() -> new SalleNotFoundException("Salle not found"));
 
@@ -189,13 +194,12 @@ public class PFEService {
         }
 
 
-
         if (pfeUpdateRequest.nomderapport() != null && !pfeUpdateRequest.nomderapport().isEmpty()) {
             pfe.setTitrerapport(pfeUpdateRequest.nomderapport());
         }
 
 
-        if (pfeUpdateRequest.dateTime()!=null) {
+        if (pfeUpdateRequest.dateTime() != null) {
             LocalDateTime dateTime = parseAndValidateDate(pfeUpdateRequest.dateTime());
             validatePfeDateTime(dateTime);
 
@@ -226,14 +230,14 @@ public class PFEService {
     }
 
 
-    public PFE getPfe(PfeRequestId pfeRequestId){
-        if(pfeRepository.findById(pfeRequestId.Id()).isEmpty()){
+    public PFE getPfe(PfeRequestId pfeRequestId) {
+        if (pfeRepository.findById(pfeRequestId.Id()).isEmpty()) {
             throw new PfeFoundException("Pfe not found");
         }
         return pfeRepository.findById(pfeRequestId.Id()).get();
     }
 
-    public List<PFE> getPfepardate(LocalDateTime localDateTime){
+    public List<PFE> getPfepardate(LocalDateTime localDateTime) {
         return pfeRepository.findByDateheure(localDateTime);
     }
 
@@ -241,11 +245,11 @@ public class PFEService {
         return pfeRepository.findByDateheureBetween(date.atTime(8, 0), date.atTime(16, 0));
     }
 
-    public String DeletePfe(PfeRequestId pfeRequestId){
-        PFE pfe=getPfe(pfeRequestId);
-        Enseignant encadreur =  pfe.getEncadreur();
-        Enseignant president =  pfe.getPresident();
-        Enseignant rapporteur =  pfe.getRapporteur();
+    public String DeletePfe(PfeRequestId pfeRequestId) {
+        PFE pfe = getPfe(pfeRequestId);
+        Enseignant encadreur = pfe.getEncadreur();
+        Enseignant president = pfe.getPresident();
+        Enseignant rapporteur = pfe.getRapporteur();
         Salle salle = pfe.getSalle();
         encadreur.getDisponibilite().remove(pfe.getDateheure());
         president.getDisponibilite().remove(pfe.getDateheure());
@@ -255,6 +259,7 @@ public class PFEService {
         enseignantRepository.save(president);
         enseignantRepository.save(rapporteur);
         salleRepository.save(salle);
+        pfeRepository.delete(pfe);
         return "Pfe Deleted successfully";
     }
 
@@ -282,27 +287,27 @@ public class PFEService {
                 }
                 String studentEmail = getStringCellValue(row.getCell(0));
                 String title = getStringCellValue(row.getCell(1));
-                if(title==null){
+                if (title == null) {
                     continue;
                 }
                 String supervisor = getStringCellValue(row.getCell(2));
-                if(enseignantRepository.findByEmail(supervisor)==null){
+                if (enseignantRepository.findByEmail(supervisor) == null) {
                     supervisor = null;
                 }
                 String president = getStringCellValue(row.getCell(3));
-                if(enseignantRepository.findByEmail(president)==null){
+                if (enseignantRepository.findByEmail(president) == null) {
                     president = null;
                 }
                 String reporter = getStringCellValue(row.getCell(4));
-                if(enseignantRepository.findByEmail(reporter)==null){
+                if (enseignantRepository.findByEmail(reporter) == null) {
                     reporter = null;
                 }
                 String room = getStringCellValue(row.getCell(7));
-                LocalDate date=parseDate(getStringCellValue(row.getCell(5)));
-                LocalTime time=parseTime(getStringCellValue(row.getCell(6)));
-                LocalDateTime dateTime=combineDateAndTime(date,time);
+                LocalDate date = parseDate(getStringCellValue(row.getCell(5)));
+                LocalTime time = parseTime(getStringCellValue(row.getCell(6)));
+                LocalDateTime dateTime = combineDateAndTime(date, time);
 
-                Algorithme.PFE pfe=new Algorithme.PFE(studentEmail,title,supervisor,reporter,president,room,dateTime);
+                Algorithme.PFE pfe = new Algorithme.PFE(studentEmail, title, supervisor, reporter, president, room, dateTime);
                 pfes.add(pfe);
             }
         }
@@ -312,20 +317,20 @@ public class PFEService {
                 .map(Enseignant::getUsername)  // Extract usernames of those who are admin
                 .collect(Collectors.toList());
 
-        Optional<Planning> planning=planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
-        if (planning.isEmpty()){
+        Optional<Planning> planning = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
+        if (planning.isEmpty()) {
             throw new PlanningNotFound("Planning not found");
         }
         LocalDateTime start = planning.get().getDatedebut().atTime(8, 0); // Définit l'heure à 8h00
         LocalDateTime end = planning.get().getDatefin().atTime(16, 0); // Définit l'heure à 16h00
-        List<Salle> salledisponibles=planning.get().getSalles();
+        List<Salle> salledisponibles = planning.get().getSalles();
         List<String> salleNames;
         if (salledisponibles != null && !salledisponibles.isEmpty()) {
             salleNames = salledisponibles.stream()
                     .map(Salle::getNom)
                     .collect(Collectors.toList());
         } else {
-            salledisponibles=salleRepository.findAll();
+            salledisponibles = salleRepository.findAll();
             salleNames = salledisponibles.stream()
                     .map(Salle::getNom)
                     .collect(Collectors.toList());
@@ -365,11 +370,11 @@ public class PFEService {
         double crossoverRate = 0.85;
         double mutationRate = 0.10;
         int elitismCount = 3;
-        List< Pfe> p=new GeneticSchedulerRT(generer(pfes,usernames),salleNames,start,end,teacherUnavailability,roomUnavailability,populationSize,generations,crossoverRate,mutationRate,elitismCount).evoluer(generer(pfes,usernames),salleNames,teacherUnavailability,roomUnavailability,start,end);
+        List<Pfe> p = new GeneticSchedulerRT(generer(pfes, usernames), salleNames, start, end, teacherUnavailability, roomUnavailability, populationSize, generations, crossoverRate, mutationRate, elitismCount).evoluer(generer(pfes, usernames), salleNames, teacherUnavailability, roomUnavailability, start, end);
 
         p.forEach(pfe ->
         {
-            String Salleid=salleRepository.findByNom(pfe.getSalle()).get().getId();
+            String Salleid = salleRepository.findByNom(pfe.getSalle()).get().getId();
             createPfe(new PFERequest(pfe.getEmailetudiant(), pfe.getTitre(), pfe.getEncadrantId(), pfe.getPresidentId(), pfe.getRapporteurId(), formatDateTime(pfe.getDateHeure()), Salleid));
         });
     }
@@ -383,6 +388,7 @@ public class PFEService {
             return null;
         }
     }
+
     public LocalDateTime combineDateAndTime(LocalDate date, LocalTime time) {
         if (date != null && time != null) {
             return date.atTime(time);
@@ -400,6 +406,7 @@ public class PFEService {
             return cell.toString().trim();
         }
     }
+
     public LocalDate parseDate(String dateString) {
         DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -410,12 +417,16 @@ public class PFEService {
         }
     }
 
-    public List<PFE> GetPfesByEnseignant(UserEntity user){
+    public List<PFE> GetPfesByEnseignant(UserEntity user) {
         Enseignant enseignant = (Enseignant) enseignantRepository.findByEmail(user.getUsername());
         if (enseignant == null) {
             throw new UserNotFoundException("User not found");
         }
         return pfeRepository.findAllByEnseignantParticipation(enseignant.getId());
+    }
+
+    public List<PFE> GetPfes() {
+        return pfeRepository.findAll();
     }
 
 

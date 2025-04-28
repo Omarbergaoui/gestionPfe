@@ -35,6 +35,10 @@ public class EnseignantController {
     public ResponseEntity<EnseignantDto> getById(@RequestParam String id) {
         return ResponseEntity.ok(enseignantService.getEnseignantById(new EnseignantRequestId(id)));
     }
+    @GetMapping("/id")
+    public ResponseEntity<EnseignantDto> getByIdWithoutPfe(@RequestParam String id) {
+        return ResponseEntity.ok(enseignantService.getEnseignantByIdWithoutPfe(new EnseignantRequestId(id)));
+    }
 
     @PutMapping("/update")
     public ResponseEntity<Object> updateById(

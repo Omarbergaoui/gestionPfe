@@ -34,7 +34,7 @@ public class AdminConfiguration {
                 admin.setPassword(passwordEncoder.encode("securepass"));
                 admin.setEmail("admin@example.com");
                 admin.setRole(Role.ADMIN);
-                admin.setEnable(false);
+                admin.setEnable(true);
                 admin.setActivationcode(Code);
                 admin.setAccountLocked(false);
                 emailService.sendActivationEmail("admin@example.com",Code);

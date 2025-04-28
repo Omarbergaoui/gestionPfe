@@ -23,9 +23,15 @@ public class PFEcontroller {
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadExcel(@RequestParam("file") MultipartFile file) throws IOException {
-            pfeService.processExcelFile(file);
-            return ResponseEntity.ok("Excel file processed successfully.");
+        pfeService.processExcelFile(file);
+        return ResponseEntity.ok("Excel file processed successfully.");
     }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<PFE>> getPfes() {
+        return ResponseEntity.ok(pfeService.GetPfes());
+    }
+
 
     @GetMapping("/mes-pfes")
     public ResponseEntity<List<PFE>> getMyPfes(@AuthenticationPrincipal UserEntity user) {
@@ -64,10 +70,6 @@ public class PFEcontroller {
 //        }
 //    }
 
-    @PutMapping("/update")
-    public ResponseEntity<String> UpdatePfe(@RequestBody PfeUpdateRequest pfeUpdateRequest){
-        return ResponseEntity.ok(pfeService.updatePfe(pfeUpdateRequest));
-    }
 
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> deletePfe(@PathVariable("id") PfeRequestId pfeRequestId) {
