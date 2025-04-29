@@ -133,7 +133,7 @@ public class PFEService {
         if (salle.getDisponibilite().contains(dateTime)) {
             throw new InvalidDateException("Salle is unavailable at that date");
         }
-        if (pfeRepository.findByPlanningidAndEtudiantemail(planning.getId(), pfeRequest.emailetudiant()).isPresent()) {
+        if (pfeRepository.findByPlanningidAndEtudiantemail(planning, pfeRequest.emailetudiant()).isPresent()) {
             throw new PfeFoundException("A PFE already exists for this student in the selected planning");
         }
 
