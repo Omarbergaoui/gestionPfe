@@ -122,12 +122,13 @@ public class PlanningService {
     public String deletePlanning(PlanningIdRequest planningIdRequest) {
         Planning planning = GetPlanningById(planningIdRequest);
         List<PFE> pfes = pfeRepository.findByPlanningid(planning);
+        System.out.println(pfes);
         if (!pfes.isEmpty()) {
             throw new RuntimeException("Planning can't be deleted: Existing Pfes related to this planning");
         } else {
-            if (pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning).getDateheure().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("Planning can't be deleted: cannot delete expired planning");
-            }
+//            if (pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning).getDateheure().isBefore(LocalDateTime.now())) {
+//                throw new RuntimeException("Planning can't be deleted: cannot delete expired planning");
+//            }
             pfes.forEach(pfe -> {
                 Enseignant encadreur = pfe.getEncadreur();
                 Enseignant rapporteur = pfe.getRapporteur();
@@ -169,8 +170,10 @@ public class PlanningService {
 
     public Planning update(PlanningIdRequest planningIdRequest, PlanningStartEndDate planningStartEndDate, SallesRequest sallesRequest) {
         Planning planning = GetPlanningById(planningIdRequest);
-        if (!pfeRepository.findByPlanningid(planning).isEmpty() && pfeRepository.findFirstByPlanningidOrderByDateheureAsc(planning).getDateheure().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Planning can't be modified");
+        List<PFE> pfes = pfeRepository.findByPlanningid(planning);
+        System.out.println(pfes);
+        if (!pfes.isEmpty()) {
+            throw new RuntimeException("Planning can't be modified: Existing Pfes related to this planning");
         }
         List<Salle> foundSalles = salleRepository.findAllById(sallesRequest.salleids());
         if (foundSalles.size() != sallesRequest.salleids().size() || foundSalles.isEmpty()) {

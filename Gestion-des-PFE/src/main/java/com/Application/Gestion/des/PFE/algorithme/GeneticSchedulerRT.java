@@ -4,6 +4,7 @@ package com.Application.Gestion.des.PFE.algorithme;
 import com.Application.Gestion.des.PFE.pfe.PFE;
 import com.Application.Gestion.des.PFE.planning.PlanningRepository;
 
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset; // Needed for converting to milliseconds if required by genererDateHeure logic
@@ -140,48 +141,63 @@ public class GeneticSchedulerRT {
      * @return A random LocalDateTime snapped to an allowed hour, or null if no valid date can be generated.
      */
     private static LocalDateTime genererDateHeure(LocalDateTime start, LocalDateTime end, Random random) {
-        if (HEURES_AUTORISEES.isEmpty()) {
+        if (HEURES_AUTORISEES == null || HEURES_AUTORISEES.isEmpty()) {
             System.err.println("Cannot generate date: No allowed hours defined.");
-            return null; // Or throw?
+            return null; // Or throw an exception
         }
 
+        // Use UTC for consistent epoch second calculations
         long startEpochSecond = start.toEpochSecond(ZoneOffset.UTC);
         long endEpochSecond = end.toEpochSecond(ZoneOffset.UTC);
 
+        // Basic validation of the time range
         if (startEpochSecond >= endEpochSecond) {
-            System.err.println("Cannot generate date: Start time is not before end time.");
-            return start; // Return start as a fallback?
+            System.err.println("Cannot generate date: Start time is not before end time. Start: " + start + ", End: " + end);
+            // Return start or null, depending on how you want to handle errors
+            return start;
         }
 
-        final int MAX_ATTEMPTS = 100; // Prevent infinite loops if range is very constrained
+        final int MAX_ATTEMPTS = 100; // Prevent potential infinite loops
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-            // 1. Pick a random time point within the overall range
+            // 1. Pick a random time point within the overall range [startEpochSecond, endEpochSecond)
+            // Add error handling for the case where endEpochSecond - startEpochSecond is zero or negative (already checked above)
+            if (endEpochSecond - startEpochSecond <= 0) {
+                // This case should not happen due to the check above, but defensive programming
+                System.err.println("Invalid range for random generation.");
+                return start;
+            }
             long randomEpochSecond = startEpochSecond + random.nextLong(endEpochSecond - startEpochSecond);
             LocalDateTime randomDateTime = LocalDateTime.ofEpochSecond(randomEpochSecond, 0, ZoneOffset.UTC);
 
-            // 2. Choose a random allowed hour
+            // 2. Choose a random allowed hour from the predefined list
             int heure = HEURES_AUTORISEES.get(random.nextInt(HEURES_AUTORISEES.size()));
 
-            // 3. Combine the date part of the random time with the chosen hour
+            // 3. Combine the date part of the random time with the chosen hour, resetting minutes/seconds
             LocalDateTime generated = randomDateTime.withHour(heure).withMinute(0).withSecond(0).withNano(0);
 
-            // 4. Validate: Ensure the generated time is still within the [start, end) interval
-            if (!generated.isBefore(start) && generated.isBefore(end)) {
+            // 4. Validate:
+            //    a) Must not be Sunday
+            //    b) Must be within the original [start, end) interval
+            if (generated.getDayOfWeek() != DayOfWeek.SUNDAY && !generated.isBefore(start) && generated.isBefore(end)) {
+                // Valid date found!
                 return generated;
             }
+            // Otherwise, loop continues for another attempt
         }
-        System.err.println("Failed to generate a valid date within the allowed range and hours after " + MAX_ATTEMPTS + " attempts.");
-        // Fallback: return start time snapped to the first allowed hour (if possible)
-        LocalDateTime fallback = start.withMinute(0).withSecond(0).withNano(0);
-        int firstAllowedHour = HEURES_AUTORISEES.get(0);
-        if (fallback.getHour() > firstAllowedHour) {
-            fallback = fallback.plusDays(1).withHour(firstAllowedHour); // Try next day
-        } else {
-            fallback = fallback.withHour(firstAllowedHour);
-        }
-        if (!fallback.isBefore(start) && fallback.isBefore(end)) return fallback;
 
-        return start; // Ultimate fallback
+        // If loop finishes without finding a valid date
+        System.err.println("Failed to generate a valid non-Sunday date within the allowed range and hours after " + MAX_ATTEMPTS + " attempts. Range: [" + start + ", " + end + ")");
+
+        // Fallback Strategy:
+        // The original fallback was complex. A simpler fallback might be sufficient,
+        // or you might want to throw an exception or return null.
+        // Returning the start time is a simple, predictable fallback.
+        // Consider if a more sophisticated fallback (like finding the *next*
+        // valid slot after start) is truly necessary for your use case.
+        System.err.println("Returning start time as fallback: " + start);
+        return start; // Fallback to start time if no valid date generated
+        // return null; // Alternative: return null to indicate failure clearly
+        // throw new IllegalStateException("Could not generate valid date"); // Alternative: throw exception
     }
 
 

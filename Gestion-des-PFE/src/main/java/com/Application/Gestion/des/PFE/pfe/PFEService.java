@@ -272,6 +272,15 @@ public class PFEService {
             throw new IllegalArgumentException("Only .xlsx files are supported.");
         }
 
+        Optional<Planning> planning = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
+        if (planning.isEmpty()) {
+            throw new PlanningNotFound("Planning not found");
+        }
+
+        if (planning.get().getDatedebut().isBefore(LocalDate.now())) {
+            throw new PlanningNotFound("Cannot upload durant planning period");
+        }
+
         List<Algorithme.PFE> pfes = new ArrayList<>();
 
         try (InputStream inputStream = file.getInputStream();
@@ -286,8 +295,10 @@ public class PFEService {
                     continue;
                 }
                 String studentEmail = getStringCellValue(row.getCell(0));
+                System.out.println(studentEmail);
                 String title = getStringCellValue(row.getCell(1));
-                if (title == null) {
+                System.out.println(title);
+                if (title == null || title.isEmpty()) {
                     continue;
                 }
                 String supervisor = getStringCellValue(row.getCell(2));
@@ -311,16 +322,35 @@ public class PFEService {
                 pfes.add(pfe);
             }
         }
+        pfeRepository.findByPlanningid( // 3. Find all PFEs related to that Planning ID
+                        planningRepository.findByAnneeuniversitaire( // 2. Find the Planning for the year
+                                getAnneeUniversitaire() // 1. Get current academic year
+                        ).get() // (Potential Issue Here)
+                ).stream() // 4. Convert the List<Pfe> result into a Stream<Pfe>
+                .map(pfe -> { // 5. For each 'pfe' object in the stream...
+                    // 6. Create a new Algorithme.PFE object, copying data
+                    Algorithme.PFE p = new Algorithme.PFE(
+                            pfe.getEtudiantemail(),
+                            pfe.getTitrerapport(),
+                            pfe.getEncadreur().getUsername(), null, null, null, null
+                    );
+                    // 7. Add the new object to the external 'pfes' list (Side Effect)
+
+                    pfes.add(p);
+
+                    DeletePfe(new PfeRequestId(pfe.getId()));
+                    return null;
+                });
+
+
         List<String> usernames = enseignantRepository.findAll()
                 .stream()
                 .filter(enseignant -> !enseignant.getRole().equals(Role.ADMIN))  // Filter by "admin" role
                 .map(Enseignant::getUsername)  // Extract usernames of those who are admin
                 .collect(Collectors.toList());
 
-        Optional<Planning> planning = planningRepository.findByAnneeuniversitaire(getAnneeUniversitaire());
-        if (planning.isEmpty()) {
-            throw new PlanningNotFound("Planning not found");
-        }
+
+
         LocalDateTime start = planning.get().getDatedebut().atTime(8, 0); // Définit l'heure à 8h00
         LocalDateTime end = planning.get().getDatefin().atTime(16, 0); // Définit l'heure à 16h00
         List<Salle> salledisponibles = planning.get().getSalles();

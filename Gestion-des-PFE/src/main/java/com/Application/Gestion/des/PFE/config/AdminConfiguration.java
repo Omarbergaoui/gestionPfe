@@ -39,6 +39,7 @@ public class AdminConfiguration {
                 admin.setAccountLocked(false);
                 emailService.sendActivationEmail("admin@example.com",Code);
                 adminRepository.save(admin);
+                System.out.println("✅ Un Admin created successfully.");
             } else {
                 System.out.println("✅ Un Admin existe déjà.");
             }

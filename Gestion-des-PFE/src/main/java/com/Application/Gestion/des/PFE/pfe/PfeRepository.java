@@ -16,4 +16,5 @@ public interface PfeRepository extends MongoRepository<PFE,String> {
     List<PFE> findByDateheure(LocalDateTime localDateTime);
     @Query("{ '$or': [ {'encadreur.id': ?0}, {'president.id': ?0}, {'rapporteur.id': ?0} ] }")
     List<PFE> findAllByEnseignantParticipation(String enseignantId);
+    void deleteAllByPlanningid(Planning planningid);
 }
